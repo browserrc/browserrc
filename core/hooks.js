@@ -3,15 +3,15 @@
  * @template {any[]} Args
  */
 export class Hook {
-  /** @type {((...args: Args) => any)[]} */
+  /** @type {Array<{listener: (...args: Args) => any, onError?: (error: unknown) => void}>} */
   #listeners = [];
-  /** @type {string} */
+  /** @type {string | undefined} */
   name;
   /** @type {string} */
   description;
 
   /**
-   * @param {string} name
+   * @param {string} [name]
    * @param {string} description
    */
   constructor(name, description) {
@@ -20,14 +20,17 @@ export class Hook {
   }
 
   /**
-   * Register a listener for this hook. Can be a function or an Action.
-   * @param {((...args: Args) => any) | import('../rpc.js').Action} listener
+   * Register a listener for this hook.
+   * @param {(...args: Args) => any} listener
+   * @param {{onError?: (error: unknown) => void}} [options]
    * @returns {() => void} Unregister function
    */
-  register(listener) {
-    this.#listeners.push(listener);
+  register(listener, options) {
+    const listenerEntry = { listener, onError: options?.onError || (() => {}) };
+    this.#listeners.push(listenerEntry);
+
     return () => {
-      const index = this.#listeners.indexOf(listener);
+      const index = this.#listeners.indexOf(listenerEntry);
       if (index > -1) {
         this.#listeners.splice(index, 1);
       }
@@ -41,11 +44,15 @@ export class Hook {
    */
   trigger(...args) {
     const results = [];
-    for (const listener of this.#listeners) {
+    for (const entry of this.#listeners) {
       try {
-        results.push(listener(...args));
+        results.push(entry.listener(...args));
       } catch (error) {
-        console.error(`[Hook:${this.name}] Error in listener:`, error);
+        try {
+          entry.onError(error);
+        } catch (onErrorError) {
+            // ignore
+        }
         results.push(undefined);
       }
     }

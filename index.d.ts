@@ -9,25 +9,19 @@ declare module 'browserrc' {
    */
   export const version: string;
 
-  /**
-   * Action type for RPC calls (placeholder - actual type defined in rpc.js)
-   */
-  export interface Action {
-    (...args: any[]): any;
-  }
 
   /**
    * Hook class that manages listeners and triggering
    */
   export class Hook<Args extends any[] = []> {
     /** @readonly */
-    name: string;
+    name?: string;
     /** @readonly */
     description: string;
 
-    constructor(name: string, description: string);
+    constructor(name?: string, description?: string);
 
-    register(listener: ((...args: Args) => any) | Action): () => void;
+    register(listener: (...args: Args) => any, options?: { onError?: (error: unknown) => void }): () => void;
     trigger(...args: Args): any[];
     clear(): void;
 
