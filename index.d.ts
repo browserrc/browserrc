@@ -8,4 +8,21 @@ declare module 'browserrc' {
    * The current version of browserrc
    */
   export const version: string;
+
+  /**
+   * Re-export Hook class from hooks module
+   */
+  export { Hook, Action } from './types/hooks';
+
+  /**
+   * Re-export Trie classes and types from trie module
+   */
+  export {
+    TrieNode,
+    Trie,
+    TrieNodeOptions,
+    TrieOptions,
+    HookContext,
+    TrieNodeHooks
+  } from './types/trie';
 }
