@@ -4,6 +4,13 @@
   "description": "A framework for creating browser extensions using a single JavaScript file",
   "main": "index.js",
   "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "core/",
+    "LICENSE",
+    "README.md"
+  ],
   "scripts": {
     "test": "node -e \"const pkg = require('./index.js'); console.log('✓ Module loads:', pkg.hello(), pkg.version);\"",
     "build": "node -e \"console.log('✓ Package valid'); require('./index.js'); console.log('✓ Module builds successfully');\""
