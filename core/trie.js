@@ -120,9 +120,10 @@ export class Trie {
    * Insert a key sequence and action into the trie
    * @param {string[]} keySequence - Array of key strings
    * @param {Function} action - Action function to execute when sequence is matched
+   * @param {Object} options - Additional options like repeat
    * @returns {void}
    */
-  insert(keySequence, action) {
+  insert(keySequence, action, options = {}) {
     let currentNode = this.root;
 
     for (const key of keySequence) {
@@ -135,6 +136,11 @@ export class Trie {
     }
 
     currentNode.action = action;
+
+    // Store metadata from options
+    if (options.repeat !== undefined) {
+      currentNode.metadata.repeat = options.repeat;
+    }
   }
 
   /**

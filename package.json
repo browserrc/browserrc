@@ -2,6 +2,7 @@
   "name": "browserrc",
   "version": "1.0.0",
   "description": "A framework for creating browser extensions using a single JavaScript file",
+  "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
   "files": [
@@ -12,7 +13,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node -e \"const pkg = require('./index.js'); console.log('✓ Module loads:', pkg.hello(), pkg.version);\"",
+    "test": "node --test core/keyProcessor.test.js",
     "build": "node -e \"console.log('✓ Package valid'); require('./index.js'); console.log('✓ Module builds successfully');\""
   },
   "keywords": [
