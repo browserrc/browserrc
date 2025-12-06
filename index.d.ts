@@ -225,7 +225,7 @@ declare module 'browserrc' {
    */
   export interface BuildOptions {
     platforms: BuildPlatforms;
-    rcpath: string;
+    rcpath?: string;
     outputDir: string;
   }
 
