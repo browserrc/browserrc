@@ -131,6 +131,8 @@ declare module 'browserrc' {
    * Parameter type for background action handlers
    */
   export type BackgroundActionParams = ActionParams<BackgroundContext>;
+  
+  export type Environment = 'page' | 'background' | 'unknown';
 
   /**
    * Base context interface available in all environments
@@ -198,4 +200,35 @@ declare module 'browserrc' {
   export function createBackgroundAction<I = {}, R = void>(
     fn: ActionHandler<BackgroundContext, I, R>
   ): BackgroundAction<I, R>;
+  
+
+  /**
+   * Base properties for the extension manifest
+   * These properties are common to all platforms and general to all extensions
+   */
+  export type ManifestProperties = {
+    name?: string;
+    version?: string;
+    description?: string;
+  };
+
+  /**
+   * The extension manifest object that users can configure
+   */
+  export const manifest: ManifestProperties;
+
+  /**
+   * Build options for the build function
+   */
+  export interface BuildOptions {
+    platforms: string[];
+    rcpath: string;
+    outputDir: string;
+  }
+
+  /**
+   * Build the extension for one or more platforms
+   */
+  export function build(options: BuildOptions): Promise<void>;
+
 }

@@ -3,6 +3,8 @@
 const { TrieNode, Trie } = require('./core/trie.js');
 const { Hook } = require('./core/hooks.js');
 const { createAction } = require('./core/rpc.js');
+const { manifest } = require('./core/buildtime/manifest.js');
+const { build } = require('./core/buildtime/index.js');
 
 module.exports = {
   hello: () => 'Hello from browserrc!',
@@ -10,5 +12,7 @@ module.exports = {
   TrieNode,
   Trie,
   Hook,
-  createAction
+  createAction,
+  manifest,
+  build
 };
