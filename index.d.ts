@@ -203,6 +203,90 @@ declare module 'browserrc' {
   
 
   /**
+   * Standard browser extension permissions
+   *
+   * This type includes common permissions supported by both Chrome and Firefox,
+   * but allows for additional string values to accommodate future permissions
+   * that browsers may add.
+   *
+   * Note: Some permissions are browser-specific:
+   * - Chrome-only: enterprise.*, system.*, sidePanel, offscreen (partially)
+   * - Firefox-only: find, search
+   * - Cross-browser: Most other permissions work similarly but may have slight behavioral differences
+   */
+  export type Permission =
+    | "activeTab"
+    | "alarms"
+    | "bookmarks"
+    | "browsingData"
+    | "clipboardRead"
+    | "clipboardWrite"
+    | "contentSettings"
+    | "contextMenus"
+    | "cookies"
+    | "debugger"
+    | "declarativeContent"
+    | "declarativeNetRequest"
+    | "declarativeNetRequestFeedback"
+    | "downloads"
+    | "enterprise.deviceAttributes"
+    | "enterprise.hardwarePlatform"
+    | "enterprise.networkingAttributes"
+    | "enterprise.platformKeys"
+    | "favicon"
+    | "fileBrowserHandler"
+    | "fileSystemProvider"
+    | "find"
+    | "fontSettings"
+    | "gcm"
+    | "geolocation"
+    | "history"
+    | "identity"
+    | "idle"
+    | "loginState"
+    | "management"
+    | "nativeMessaging"
+    | "notifications"
+    | "offscreen"
+    | "pageCapture"
+    | "platformKeys"
+    | "power"
+    | "printerProvider"
+    | "privacy"
+    | "proxy"
+    | "scripting"
+    | "search"
+    | "sessions"
+    | "sidePanel"
+    | "storage"
+    | "system.cpu"
+    | "system.display"
+    | "system.memory"
+    | "system.storage"
+    | "tabCapture"
+    | "tabGroups"
+    | "tabs"
+    | "topSites"
+    | "tts"
+    | "ttsEngine"
+    | "unlimitedStorage"
+    | "vpnProvider"
+    | "wallpaper"
+    | "webNavigation"
+    | "webRequest"
+    | (string & {});
+
+  /**
+   * Host permission patterns (URL patterns)
+   */
+  export type HostPermission = string;
+
+  /**
+   * Combined permission type that includes both standard permissions and host permissions
+   */
+  export type ManifestPermission = Permission | HostPermission;
+
+  /**
    * Base properties for the extension manifest
    * These properties are common to all platforms and general to all extensions
    */
@@ -210,12 +294,14 @@ declare module 'browserrc' {
     name?: string;
     version?: string;
     description?: string;
+    permissions: ManifestPermission[];
   };
 
   /**
    * The extension manifest object that users can configure
    */
   export const manifest: ManifestProperties;
+
   
   export type BuildPlatform = 'chrome' | 'firefox';
   export type BuildPlatforms = { chrome: true } | { firefox: true } | { chrome: true, firefox: true };

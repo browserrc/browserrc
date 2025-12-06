@@ -1,5 +1,5 @@
 import { JSONFile } from "./code.js";
-import type { BuildPlatforms } from "../../index.js";
+import type { Permission, ManifestPermission } from "../../index.js";
 
 interface ContentScriptEntry {
     matches: string[];
@@ -8,8 +8,17 @@ interface ContentScriptEntry {
     all_frames: boolean;
 }
 
+interface ContentScriptOptions {
+    matches?: string[];
+    run_at?: 'document_start' | 'document_end' | 'document_idle';
+    all_frames?: boolean;
+    platforms?: { chrome?: true; firefox?: true };
+    js: string[];
+}
+
 interface ExtendedJSONFile extends JSONFile {
     content_scripts: ContentScriptEntry[];
+    permissions?: ManifestPermission[];
     manifest_version?: number;
     version?: string;
     name?: string;
@@ -49,9 +58,12 @@ export const DEFAULT_DESCRIPTION = "A browser extension that nobody thought was 
 
 // internal manifest files state
 const MANIFESTS: Record<string, ExtendedJSONFile> = {
-    chrome: Object.assign(new JSONFile('chrome/manifest.json'), { content_scripts: [] }),
-    firefox: Object.assign(new JSONFile('firefox/manifest.json'), { content_scripts: [] }),
+    chrome: Object.assign(new JSONFile('chrome/manifest.json'), { content_scripts: [], permissions: [] }),
+    firefox: Object.assign(new JSONFile('firefox/manifest.json'), { content_scripts: [], permissions: [] }),
 };
+
+// internal permissions state
+const PERMISSIONS: Set<ManifestPermission> = new Set();
 
 // public, platform-agnostic, manifests API
 // imported in browserrc file is `import {manifest} from 'browserrc'
@@ -59,12 +71,27 @@ export const manifest = {
     name: generateDefaultName(),
     version: DEFAULT_VERSION,
     description: DEFAULT_DESCRIPTION,
+
+    /**
+     * Get the current permissions array
+     */
+    get permissions(): ManifestPermission[] {
+        return Array.from(PERMISSIONS);
+    },
+
+    /**
+     * Set permissions directly (replaces all existing permissions)
+     */
+    set permissions(perms: ManifestPermission[]) {
+        PERMISSIONS.clear();
+        perms.forEach(perm => PERMISSIONS.add(perm));
+    },
 };
 
 /**
  * Platform-agnostic API for adding content scripts
  */
-export function addContentScript(options: import("../../index.js").ContentScriptOptions): void {
+export function addContentScript(options: ContentScriptOptions): void {
     const {
         matches = ['<all_urls>'],
         js,
@@ -93,16 +120,20 @@ export function addContentScript(options: import("../../index.js").ContentScript
     }
 }
 
+
 /**
  * Merge user manifest with internal manifest state to produce the final manifest files, and write them
  */
-export function buildManifests(outputDir: string, platforms: BuildPlatforms): void {
+export function buildManifests(outputDir: string, platforms: { chrome?: true; firefox?: true }): void {
+    const permissions = Array.from(PERMISSIONS);
+
     if (platforms.chrome) {
         Object.assign(MANIFESTS.chrome, {
             manifest_version: 3,
             version: manifest.version,
             name: manifest.name,
             description: manifest.description,
+            ...(permissions.length > 0 && { permissions }),
         });
         MANIFESTS.chrome.write(outputDir);
     }
@@ -113,6 +144,7 @@ export function buildManifests(outputDir: string, platforms: BuildPlatforms): vo
             version: manifest.version,
             name: manifest.name,
             description: manifest.description,
+            ...(permissions.length > 0 && { permissions }),
         });
         MANIFESTS.firefox.write(outputDir);
     }
