@@ -235,6 +235,35 @@ declare module 'browserrc' {
   export function build(options: BuildOptions): Promise<void>;
 
   /**
+   * Options for configuring content scripts
+   */
+  export interface ContentScriptOptions {
+    matches?: string[];
+    run_at?: 'document_start' | 'document_end' | 'document_idle';
+    all_frames?: boolean;
+    platforms?: BuildPlatforms;
+  }
+
+  /**
+   * Content script utilities for creating dynamic and static content scripts
+   */
+  export const contentScripts: {
+    /**
+     * Create a dynamic content script that gets built and registered in the manifest
+     * @param relPath - The relative path to the content script file
+     * @param options - Options for the content script
+     */
+    dynamic(relPath: string, options?: ContentScriptOptions): any;
+
+    /**
+     * Register a static content script in the manifest
+     * @param relPath - The relative path to the content script file
+     * @param options - Options for the content script
+     */
+    static(relPath: string, options?: ContentScriptOptions): void;
+  };
+
+  /**
    * Hooks namespace containing build-time hooks
    */
   export const hooks: {
