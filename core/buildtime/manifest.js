@@ -1,4 +1,4 @@
-import { JSONFile } from "../code.js";
+import { JSONFile } from "./code.js";
 
 export function generateDefaultName() {
     const adjectives = [
