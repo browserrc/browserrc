@@ -9,682 +9,296 @@ import assert from 'node:assert';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { CodeSegment, JavascriptFile, JSONFile } from './code.js';
+import { CodeFile } from './code.js';
 
-// Helper function to create a temporary file and test the generated code
-function testGeneratedCode(description, setupFileCallback, additionalChecks = () => {}) {
-  test(description, () => {
-    const tempDir = os.tmpdir();
-    const tempFile = path.join(tempDir, `test-${Date.now()}-${Math.random().toString(36).substring(7)}.js`);
-
-    try {
-      const file = new JavascriptFile(tempFile);
-      setupFileCallback(file);
-
-      file.write();
-
-      // Verify file was created
-      assert.ok(fs.existsSync(tempFile), 'File should be created');
-
-      // Read the generated code
-      const generatedCode = fs.readFileSync(tempFile, 'utf8');
-      assert.ok(generatedCode.length > 0, 'Generated code should not be empty');
-
-      // Eval the code to ensure it's valid JavaScript
-      // Use Function constructor to avoid syntax errors being caught
-      try {
-        new Function(generatedCode)();
-      } catch (error) {
-        assert.fail(`Generated code should be valid JavaScript: ${error.message}`);
-      }
-
-      // Run additional checks
-      additionalChecks(file, generatedCode);
-
-    } finally {
-      // Clean up
-      if (fs.existsSync(tempFile)) {
-        fs.unlinkSync(tempFile);
-      }
-    }
-  });
-}
-
-describe('Code Validation', () => {
-  test('validation functions are currently no-ops', () => {
-    // The validation functions are currently no-ops, so any valid code should pass
-    // We'll test this through the public API of CodeSegment.addLine
-    const pageSegment = new CodeSegment('page');
-    const backgroundSegment = new CodeSegment('background');
-
-    assert.doesNotThrow(() => {
-      pageSegment.addLine('console.log("test");');
-      backgroundSegment.addLine('chrome.runtime.onMessage.addListener(() => {});');
-    });
-  });
-});
-
-describe('CodeSegment', () => {
+describe('CodeFile', () => {
   describe('Constructor', () => {
-    test('creates CodeSegment with page environment', () => {
-      const segment = new CodeSegment('page');
-
-      assert.strictEqual(segment.environment, 'page');
-      assert.strictEqual(segment.code, '');
-    });
-
-    test('creates CodeSegment with background environment', () => {
-      const segment = new CodeSegment('background');
-
-      assert.strictEqual(segment.environment, 'background');
-      assert.strictEqual(segment.code, '');
-    });
-  });
-
-  describe('addLine', () => {
-    test('adds single line successfully', () => {
-      const segment = new CodeSegment('page');
-      const line = 'console.log("hello");';
-
-      segment.addLine(line);
-
-      assert.strictEqual(segment.code, line + '\n');
-    });
-
-    test('adds multiple lines with proper formatting', () => {
-      const segment = new CodeSegment('page');
-
-      segment.addLine('const a = 1;');
-      segment.addLine('const b = 2;');
-      segment.addLine('console.log(a + b);');
-
-      const expected = 'const a = 1;\nconst b = 2;\nconsole.log(a + b);\n';
-      assert.strictEqual(segment.code, expected);
-    });
-
-    test('throws error for empty line after trimming', () => {
-      const segment = new CodeSegment('page');
-
-      assert.throws(() => {
-        segment.addLine('   ');
-      }, /Invalid code line/);
-    });
-
-    test('throws error for line with newlines', () => {
-      const segment = new CodeSegment('page');
-
-      assert.throws(() => {
-        segment.addLine('line1\nline2');
-      }, /Invalid code line/);
-
-      assert.throws(() => {
-        segment.addLine('line1\r\nline2');
-      }, /Invalid code line/);
-    });
-
-    test('throws error for single space (empty after trim)', () => {
-      const segment = new CodeSegment('page');
-
-      assert.throws(() => {
-        segment.addLine(' ');
-      }, /Invalid code line/);
-    });
-
-    test('trims whitespace from lines', () => {
-      const segment = new CodeSegment('page');
-
-      segment.addLine('  const x = 5;  '); // Should trim
-      assert.strictEqual(segment.code, 'const x = 5;\n');
-    });
-  });
-
-  describe('addLines', () => {
-    test('adds multiple lines via addLines method', () => {
-      const segment = new CodeSegment('page');
-
-      segment.addLines(
-        'const a = 1;',
-        'const b = 2;',
-        'return a + b;'
-      );
-
-      const expected = 'const a = 1;\nconst b = 2;\nreturn a + b;\n';
-      assert.strictEqual(segment.code, expected);
-    });
-
-    test('handles empty addLines call', () => {
-      const segment = new CodeSegment('page');
-
-      segment.addLines();
-
-      assert.strictEqual(segment.code, '');
-    });
-
-    test('validates each line in addLines', () => {
-      const segment = new CodeSegment('page');
-
-      assert.throws(() => {
-        segment.addLines('valid line', '   ', 'another valid');
-      }, /Invalid code line/);
-    });
-
-    test('trims whitespace from lines in addLines', () => {
-      const segment = new CodeSegment('page');
-
-      segment.addLines(
-        '  const a = 1;  ',
-        '  const b = 2;  '
-      );
-
-      const expected = 'const a = 1;\nconst b = 2;\n';
-      assert.strictEqual(segment.code, expected);
-    });
-  });
-});
-
-describe('JavascriptFile', () => {
-  describe('Constructor', () => {
-    test('creates JavascriptFile with relPath and initializes properties', () => {
-      const file = new JavascriptFile('/path/to/output.js');
-
-      assert.strictEqual(file.relPath, '/path/to/output.js');
+    test('creates CodeFile with relPath', () => {
+      const file = new CodeFile({ relPath: 'test.js' });
+      assert.strictEqual(file.relPath, 'test.js');
       assert.ok(file.constants instanceof Map);
-      assert.strictEqual(file.constants.size, 0);
-      assert.strictEqual(file.body, '');
+      assert.strictEqual(file.code, '');
+      assert.deepStrictEqual(file.context, {});
+    });
+
+    test('creates CodeFile without relPath', () => {
+      const file = new CodeFile();
+      assert.strictEqual(file.relPath, null);
+      assert.ok(file.constants instanceof Map);
+      assert.strictEqual(file.code, '');
+      assert.deepStrictEqual(file.context, {});
+    });
+
+    test('new CodeFile() creates a segment', () => {
+      const segment = new CodeFile();
+      assert.strictEqual(segment.relPath, null);
+      assert.ok(segment.constants instanceof Map);
+      assert.strictEqual(segment.code, '');
+      assert.deepStrictEqual(segment.context, {});
+    });
+
+    test('new CodeFile({ relPath }) creates a file', () => {
+      const file = new CodeFile({ relPath: 'output.js' });
+      assert.strictEqual(file.relPath, 'output.js');
+      assert.ok(file.constants instanceof Map);
+      assert.strictEqual(file.code, '');
+      assert.deepStrictEqual(file.context, {});
+    });
+
+    test('constructor accepts props object', () => {
+      const file = new CodeFile({
+        relPath: 'test.js',
+        code: 'console.log("hello");',
+        constants: [['VERSION', '1.0.0'], ['DEBUG', true]],
+        context: { enabled: true, count: 5 }
+      });
+
+      assert.strictEqual(file.relPath, 'test.js');
+      assert.strictEqual(file.code, 'console.log("hello");');
+      assert.strictEqual(file.constants.get('VERSION'), '1.0.0');
+      assert.strictEqual(file.constants.get('DEBUG'), true);
+      assert.deepStrictEqual(file.context, { enabled: true, count: 5 });
+    });
+
+  });
+
+  describe('Context Management', () => {
+    test('setContext with key-value pair', () => {
+      const file = new CodeFile();
+      file.setContext('enabled', true);
+
+      assert.deepStrictEqual(file.getContext(), { enabled: true });
+    });
+
+    test('setContext with object', () => {
+      const file = new CodeFile();
+      file.setContext({ enabled: true, debug: false });
+
+      assert.deepStrictEqual(file.getContext(), { enabled: true, debug: false });
+    });
+
+    test('setContext merges multiple calls', () => {
+      const file = new CodeFile();
+      file.setContext('enabled', true);
+      file.setContext({ debug: false, count: 5 });
+
+      assert.deepStrictEqual(file.getContext(), { enabled: true, debug: false, count: 5 });
+    });
+
+    test('setContext returns this for chaining', () => {
+      const file = new CodeFile();
+      const result = file.setContext('test', 'value');
+
+      assert.strictEqual(result, file);
+    });
+
+    test('clearContext removes all context', () => {
+      const file = new CodeFile();
+      file.setContext({ a: 1, b: 2 });
+      file.clearContext();
+
+      assert.deepStrictEqual(file.getContext(), {});
+    });
+
+    test('renderTemplate uses stored context', () => {
+      const file = new CodeFile();
+      file.code = 'const enabled = {{enabled}};';
+      file.setContext('enabled', true);
+
+      const rendered = file.renderTemplate();
+
+      assert.strictEqual(rendered.code, 'const enabled = true;');
+      assert.notStrictEqual(rendered, file); // Should return new instance
+    });
+
+    test('renderTemplate merges additional context', () => {
+      const file = new CodeFile();
+      file.code = 'const enabled = {{enabled}}, debug = {{debug}};';
+      file.setContext('enabled', true);
+
+      const rendered = file.renderTemplate({ debug: false });
+
+      assert.strictEqual(rendered.code, 'const enabled = true, debug = false;');
+    });
+
+    test('renderTemplate prioritizes additional context', () => {
+      const file = new CodeFile();
+      file.code = 'const value = {{key}};';
+      file.setContext('key', 'stored');
+
+      const rendered = file.renderTemplate({ key: 'additional' });
+
+      assert.strictEqual(rendered.code, 'const value = additional;');
     });
   });
 
-  describe('includeSegment', () => {
-    test('includes first segment', () => {
-      const file = new JavascriptFile('/test.js');
-      const segment = new CodeSegment('page');
-      segment.addLine('console.log("test");');
+  describe('includeFileContent', () => {
+    test('includes file content as code block', async () => {
+      const tempDir = os.tmpdir();
+      const tempFile = path.join(tempDir, `test-file-${Date.now()}-${Math.random().toString(36).substring(7)}.js`);
+      const testContent = 'console.log("Hello from included file!");\nconst x = 42;';
 
-      file.includeSegment(segment);
+      try {
+        // Create a test file
+        fs.writeFileSync(tempFile, testContent);
 
-      assert.strictEqual(file.body, 'console.log("test");\n');
-    });
+        const file = new CodeFile();
+        file.includeFileContent(tempFile);
 
-    test('includes multiple segments with separator', () => {
-      const file = new JavascriptFile('/test.js');
+        assert.strictEqual(file.code, testContent);
 
-      const segment1 = new CodeSegment('page');
-      segment1.addLine('const a = 1;');
-
-      const segment2 = new CodeSegment('background');
-      segment2.addLine('const b = 2;');
-
-      file.includeSegment(segment1);
-      file.includeSegment(segment2);
-
-      const expected = 'const a = 1;\n\n\nconst b = 2;\n';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('handles empty segments', () => {
-      const file = new JavascriptFile('/test.js');
-      const segment = new CodeSegment('page');
-
-      file.includeSegment(segment);
-
-      assert.strictEqual(file.body, '');
-    });
-  });
-
-  describe('includeConstant', () => {
-    test('adds constant to the map', () => {
-      const file = new JavascriptFile('/test.js');
-
-      file.includeConstant('VERSION', '1.0.0');
-      file.includeConstant('DEBUG', true);
-
-      assert.strictEqual(file.constants.get('VERSION'), '"1.0.0"');
-      assert.strictEqual(file.constants.get('DEBUG'), 'true');
-      assert.strictEqual(file.constants.size, 2);
-    });
-
-    test('handles different value types correctly', () => {
-      const file = new JavascriptFile('/test.js');
-
-      file.includeConstant('STRING_VAL', 'hello world');
-      file.includeConstant('NUMBER_VAL', 42);
-      file.includeConstant('BOOLEAN_VAL', false);
-      file.includeConstant('NULL_VAL', null);
-      file.includeConstant('ARRAY_VAL', [1, 2, 3]);
-      file.includeConstant('OBJECT_VAL', { key: 'value' });
-
-      assert.strictEqual(file.constants.get('STRING_VAL'), '"hello world"');
-      assert.strictEqual(file.constants.get('NUMBER_VAL'), '42');
-      assert.strictEqual(file.constants.get('BOOLEAN_VAL'), 'false');
-      assert.strictEqual(file.constants.get('NULL_VAL'), 'null');
-      assert.strictEqual(file.constants.get('ARRAY_VAL'), '[1,2,3]');
-      assert.strictEqual(file.constants.get('OBJECT_VAL'), '{"key":"value"}');
-    });
-
-    test('escapes quotes in strings', () => {
-      const file = new JavascriptFile('/test.js');
-
-      file.includeConstant('QUOTE_STR', 'He said "hello"');
-      file.includeConstant('SINGLE_QUOTE_STR', "It's working");
-
-      assert.strictEqual(file.constants.get('QUOTE_STR'), '"He said \\"hello\\""');
-      assert.strictEqual(file.constants.get('SINGLE_QUOTE_STR'), '"It\'s working"');
-    });
-  });
-
-  describe('includeIIFE', () => {
-    test('includes basic IIFE', () => {
-      const file = new JavascriptFile('/test.js');
-      const iifeFn = function() {
-        console.log('IIFE executed');
-        return 42;
-      };
-
-      file.includeIIFE(iifeFn);
-
-      const expected = '(function() {\n        console.log(\'IIFE executed\');\n        return 42;\n      })();';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('includes multiple IIFEs with proper separation', () => {
-      const file = new JavascriptFile('/test.js');
-
-      const iife1 = function() { console.log('first'); };
-      const iife2 = function() { console.log('second'); };
-
-      file.includeIIFE(iife1);
-      file.includeIIFE(iife2);
-
-      const expected = '(function() { console.log(\'first\'); })();\n\n(function() { console.log(\'second\'); })();';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('handles arrow function IIFE', () => {
-      const file = new JavascriptFile('/test.js');
-      const arrowIIFE = () => {
-        const result = 1 + 2;
-        return result;
-      };
-
-      file.includeIIFE(arrowIIFE);
-
-      const expected = '(() => {\n        const result = 1 + 2;\n        return result;\n      })();';
-      assert.strictEqual(file.body, expected);
-    });
-
-    testGeneratedCode('generates valid code with IIFE', (file) => {
-      const iifeFn = function() {
-        const message = 'Hello from IIFE';
-        console.log(message);
-      };
-      file.includeIIFE(iifeFn);
-    }, (file, generatedCode) => {
-      // Verify the generated code contains the IIFE
-      assert.ok(generatedCode.includes('(function() {'), 'Should contain IIFE start');
-      assert.ok(generatedCode.includes('console.log(message);'), 'Should contain IIFE body');
-      assert.ok(generatedCode.includes('})();'), 'Should contain IIFE end');
-      assert.ok(generatedCode.includes('Hello from IIFE'), 'Should contain the message');
-    });
-  });
-
-  describe('includeFunction', () => {
-    test('includes anonymous function without name', () => {
-      const file = new JavascriptFile('/test.js');
-      const anonFn = function() {
-        return 'anonymous';
-      };
-
-      file.includeFunction(anonFn);
-
-      const expected = 'function() {\n        return \'anonymous\';\n      }';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('renames anonymous function when name provided', () => {
-      const file = new JavascriptFile('/test.js');
-      const anonFn = function() {
-        return 'hello world';
-      };
-
-      file.includeFunction(anonFn, 'sayHello');
-
-      const expected = 'function sayHello() {\n        return \'hello world\';\n      }';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('includes named function without name parameter', () => {
-      const file = new JavascriptFile('/test.js');
-
-      function originalName() {
-        return 'named function';
+      } finally {
+        if (fs.existsSync(tempFile)) {
+          fs.unlinkSync(tempFile);
+        }
       }
-
-      file.includeFunction(originalName);
-
-      const expected = 'function originalName() {\n        return \'named function\';\n      }';
-      assert.strictEqual(file.body, expected);
     });
 
-    test('renames named function when name provided', () => {
-      const file = new JavascriptFile('/test.js');
+    test('includes multiple files with proper separation', async () => {
+      const tempDir = os.tmpdir();
+      const tempFile1 = path.join(tempDir, `test-file1-${Date.now()}-${Math.random().toString(36).substring(7)}.js`);
+      const tempFile2 = path.join(tempDir, `test-file2-${Date.now()}-${Math.random().toString(36).substring(7)}.js`);
+      const content1 = 'const a = 1;';
+      const content2 = 'const b = 2;';
 
-      function originalName() {
-        return 'hello world';
+      try {
+        // Create test files
+        fs.writeFileSync(tempFile1, content1);
+        fs.writeFileSync(tempFile2, content2);
+
+        const file = new CodeFile();
+        file.includeFileContent(tempFile1);
+        file.includeFileContent(tempFile2);
+
+        const expected = content1 + '\n\n' + content2;
+        assert.strictEqual(file.code, expected);
+
+      } finally {
+        if (fs.existsSync(tempFile1)) {
+          fs.unlinkSync(tempFile1);
+        }
+        if (fs.existsSync(tempFile2)) {
+          fs.unlinkSync(tempFile2);
+        }
       }
-
-      file.includeFunction(originalName, 'newName');
-
-      const expected = 'function newName() {\n        return \'hello world\';\n      }';
-      assert.strictEqual(file.body, expected);
     });
 
-    test('includes multiple functions with proper separation', () => {
-      const file = new JavascriptFile('/test.js');
-
-      const fn1 = function() { return 1; };
-      const fn2 = function() { return 2; };
-
-      file.includeFunction(fn1, 'getOne');
-      file.includeFunction(fn2, 'getTwo');
-
-      const expected = 'function getOne() { return 1; }\n\nfunction getTwo() { return 2; }';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('includes arrow function with name', () => {
-      const file = new JavascriptFile('/test.js');
-      const arrowFn = () => {
-        return 'arrow result';
-      };
-
-      file.includeFunction(arrowFn, 'arrowFunc');
-
-      const expected = 'const arrowFunc = () => {\n        return \'arrow result\';\n      };';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('throws error for arrow function without name', () => {
-      const file = new JavascriptFile('/test.js');
-      const arrowFn = () => console.log('arrow');
+    test('throws error for non-existent file', () => {
+      const file = new CodeFile();
 
       assert.throws(() => {
-        file.includeFunction(arrowFn);
-      }, /Arrow functions must have a name parameter/);
+        file.includeFileContent('/non/existent/file.js');
+      }, /Failed to read file/);
     });
 
-    test('handles async arrow functions', () => {
-      const file = new JavascriptFile('/test.js');
-      const asyncArrowFn = async () => {
-        await Promise.resolve();
-        return 'async result';
-      };
+    test('returns this for chaining', async () => {
+      const tempDir = os.tmpdir();
+      const tempFile = path.join(tempDir, `test-chain-${Date.now()}-${Math.random().toString(36).substring(7)}.js`);
+      const testContent = 'console.log("test");';
 
-      file.includeFunction(asyncArrowFn, 'asyncFunc');
+      try {
+        fs.writeFileSync(tempFile, testContent);
 
-      const expected = 'const asyncFunc = async () => {\n        await Promise.resolve();\n        return \'async result\';\n      };';
-      assert.strictEqual(file.body, expected);
-    });
+        const file = new CodeFile();
+        const result = file.includeFileContent(tempFile);
 
-    test('handles arrow function with parameters', () => {
-      const file = new JavascriptFile('/test.js');
-      const arrowWithParams = (a, b) => a + b;
+        assert.strictEqual(result, file);
+        assert.strictEqual(file.code, testContent);
 
-      file.includeFunction(arrowWithParams, 'add');
-
-      const expected = 'const add = (a, b) => a + b;';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('handles async functions', () => {
-      const file = new JavascriptFile('/test.js');
-
-      async function asyncFn() {
-        await Promise.resolve();
-        return 'async';
+      } finally {
+        if (fs.existsSync(tempFile)) {
+          fs.unlinkSync(tempFile);
+        }
       }
-
-      file.includeFunction(asyncFn, 'renamedAsync');
-
-      const expected = 'async function renamedAsync() {\n        await Promise.resolve();\n        return \'async\';\n      }';
-      assert.strictEqual(file.body, expected);
-    });
-
-    test('mixes different function types', () => {
-      const file = new JavascriptFile('/test.js');
-
-      const anonFn = function() { console.log('anon'); };
-      function namedFn() { return true; }
-      const arrowFn = () => 'arrow';
-
-      file.includeFunction(anonFn, 'renamedAnon');
-      file.includeFunction(namedFn); // keep original name
-      file.includeFunction(arrowFn, 'myArrow');
-
-      const expected = 'function renamedAnon() { console.log(\'anon\'); }\n\nfunction namedFn() { return true; }\n\nconst myArrow = () => \'arrow\';';
-      assert.strictEqual(file.body, expected);
-    });
-
-    testGeneratedCode('generates valid code with functions', (file) => {
-      const helperFn = function() {
-        const utils = { add: (a, b) => a + b };
-        return utils;
-      };
-      file.includeFunction(helperFn, 'createUtils');
-    }, (file, generatedCode) => {
-      // Verify the generated code contains the renamed function
-      assert.ok(generatedCode.includes('function createUtils() {'), 'Should contain renamed function');
-      assert.ok(generatedCode.includes('const utils = { add: (a, b) => a + b };'), 'Should contain function body');
-      assert.ok(generatedCode.includes('return utils;'), 'Should contain return statement');
     });
   });
 
   describe('write', () => {
-    testGeneratedCode('writes file with constants and body', (file) => {
-      // Add some constants
-      file.includeConstant('NAME', 'test');
-      file.includeConstant('VALUE', 42);
-
-      // Add some body content
-      const segment = new CodeSegment('page');
-      segment.addLine('console.log(NAME);');
-      file.includeSegment(segment);
-    }, (file, generatedCode) => {
-      // Verify the generated code contains the expected constants and body
-      assert.ok(generatedCode.includes('const NAME = "test";'), 'Should contain NAME constant');
-      assert.ok(generatedCode.includes('const VALUE = 42;'), 'Should contain VALUE constant');
-      assert.ok(generatedCode.includes('console.log(NAME);'), 'Should contain body code');
-    });
-
-    testGeneratedCode('writes file with only constants', (file) => {
-      file.includeConstant('PI', 3.14159);
-      file.includeConstant('E', 2.71828);
-    }, (file, generatedCode) => {
-      // Verify the generated code contains only constants
-      assert.ok(generatedCode.includes('const PI = 3.14159;'), 'Should contain PI constant');
-      assert.ok(generatedCode.includes('const E = 2.71828;'), 'Should contain E constant');
-      assert.ok(generatedCode.endsWith('\n\n'), 'Should end with proper spacing');
-    });
-
-    testGeneratedCode('writes file with only body', (file) => {
-      const segment = new CodeSegment('page');
-      segment.addLine('function test() {');
-      segment.addLine('return true;');
-      segment.addLine('}');
-      file.includeSegment(segment);
-    }, (file, generatedCode) => {
-      // Verify the generated code contains the function body
-      assert.ok(generatedCode.includes('function test() {'), 'Should contain function definition');
-      assert.ok(generatedCode.includes('return true;'), 'Should contain function body');
-      assert.ok(generatedCode.startsWith('\n\n'), 'Should start with proper spacing for body-only');
-    });
-
-    testGeneratedCode('writes empty file when no constants or body', (file) => {
-      // No setup needed - empty file
-    }, (file, generatedCode) => {
-      // Verify empty file contains minimal content
-      assert.strictEqual(generatedCode, '\n\n', 'Empty file should contain only newlines');
-    });
-  });
-});
-
-describe('JSONFile', () => {
-  describe('Constructor', () => {
-    test('creates JSONFile with relPath', () => {
-      const file = new JSONFile('manifest.json');
-
-      assert.strictEqual(file.relPath, 'manifest.json');
-    });
-  });
-
-  describe('Direct property manipulation', () => {
-    test('allows setting properties directly like a regular object', () => {
-      const file = new JSONFile('test.json');
-
-      file.name = 'test-extension';
-      file.version = '1.0.0';
-      file.description = 'A test extension';
-
-      assert.strictEqual(file.name, 'test-extension');
-      assert.strictEqual(file.version, '1.0.0');
-      assert.strictEqual(file.description, 'A test extension');
-    });
-
-    test('allows overwriting existing properties', () => {
-      const file = new JSONFile('test.json');
-
-      file.version = '1.0.0';
-      file.version = '2.0.0';
-
-      assert.strictEqual(file.version, '2.0.0');
-    });
-
-    test('supports complex object properties', () => {
-      const file = new JSONFile('test.json');
-
-      file.permissions = ['storage', 'activeTab'];
-      file.manifest_version = 3;
-      file.background = {
-        service_worker: 'background.js',
-        type: 'module'
-      };
-
-      assert.deepStrictEqual(file.permissions, ['storage', 'activeTab']);
-      assert.strictEqual(file.manifest_version, 3);
-      assert.deepStrictEqual(file.background, {
-        service_worker: 'background.js',
-        type: 'module'
-      });
-    });
-  });
-
-
-  describe('write', () => {
-    test('writes valid JSON file with properties', () => {
+    test('writes file with relPath', async () => {
       const tempDir = os.tmpdir();
-      const tempFile = path.join(tempDir, `test-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+      const filename = `test-write-relpath-${Date.now()}-${Math.random().toString(36).substring(7)}.js`;
+      const tempFile = path.join(tempDir, filename);
 
       try {
-        const file = new JSONFile(tempFile);
-        file.name = 'test-extension';
-        file.version = '1.0.0';
-        file.description = 'A test extension';
-        file.permissions = ['storage', 'activeTab'];
+        const file = new CodeFile({ relPath: filename });
+        file.addBlock('console.log("test");');
 
-        file.write();
 
-        // Verify file was created
-        assert.ok(fs.existsSync(tempFile), 'File should be created');
+        file.write(tempDir);
 
-        // Read and parse the generated JSON
         const generatedContent = fs.readFileSync(tempFile, 'utf8');
-        const parsedData = JSON.parse(generatedContent);
-
-        // Verify the data matches what we set
-        assert.strictEqual(parsedData.name, 'test-extension');
-        assert.strictEqual(parsedData.version, '1.0.0');
-        assert.strictEqual(parsedData.description, 'A test extension');
-        assert.deepStrictEqual(parsedData.permissions, ['storage', 'activeTab']);
+        assert.ok(generatedContent.includes('console.log("test");'));
 
       } finally {
-        // Clean up
         if (fs.existsSync(tempFile)) {
           fs.unlinkSync(tempFile);
         }
       }
     });
 
-    test('writes properly formatted JSON', () => {
+    test('writes file with outputPath parameter', async () => {
       const tempDir = os.tmpdir();
-      const tempFile = path.join(tempDir, `test-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+      const tempFile = path.join(tempDir, `test-write-outputpath-${Date.now()}-${Math.random().toString(36).substring(7)}.js`);
 
       try {
-        const file = new JSONFile(tempFile);
-        file.nested = { key: 'value', array: [1, 2, 3] };
+        const file = new CodeFile(); // No relPath set
+        file.addBlock('console.log("test");');
 
-        file.write();
+        file.write(tempFile);
 
         const generatedContent = fs.readFileSync(tempFile, 'utf8');
-
-        // Verify it's valid JSON and properly formatted with 2-space indentation
-        const parsed = JSON.parse(generatedContent);
-        assert.deepStrictEqual(parsed, { nested: { key: 'value', array: [1, 2, 3] } });
-
-        // Check formatting (should have proper indentation)
-        assert.ok(generatedContent.includes('  "nested": {'));
-        assert.ok(generatedContent.includes('    "key": "value"'));
+        assert.ok(generatedContent.includes('console.log("test");'));
 
       } finally {
-        // Clean up
         if (fs.existsSync(tempFile)) {
           fs.unlinkSync(tempFile);
         }
       }
     });
 
-    test('writes empty object when no properties set', () => {
+    test('writes file with outputPath and outputDir', async () => {
       const tempDir = os.tmpdir();
-      const tempFile = path.join(tempDir, `test-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+      const filename = `test-write-both-${Date.now()}-${Math.random().toString(36).substring(7)}.js`;
+      const tempFile = path.join(tempDir, filename);
 
       try {
-        const file = new JSONFile(tempFile);
-        file.write();
+        const file = new CodeFile();
+        file.addBlock('console.log("test");');
+
+        file.write(filename, tempDir);
 
         const generatedContent = fs.readFileSync(tempFile, 'utf8');
-        assert.strictEqual(generatedContent, '{}');
+        assert.ok(generatedContent.includes('console.log("test");'));
 
       } finally {
-        // Clean up
         if (fs.existsSync(tempFile)) {
           fs.unlinkSync(tempFile);
         }
       }
     });
 
-    test('writes the JSONFile instance itself as JSON, excluding relPath', () => {
+    test('throws error without relPath or outputPath', () => {
+      const file = new CodeFile();
+      file.addBlock('console.log("test");');
+
+      assert.throws(() => {
+        file.write();
+      }, /Cannot write file without relPath/);
+    });
+
+    test('returns this for chaining', async () => {
       const tempDir = os.tmpdir();
-      const tempFile = path.join(tempDir, `test-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+      const tempFile = path.join(tempDir, `test-write-chain-${Date.now()}-${Math.random().toString(36).substring(7)}.js`);
 
       try {
-        const file = new JSONFile(tempFile);
-        file.name = 'test-extension';
-        file.version = '1.0.0';
-        file.permissions = ['storage', 'activeTab'];
+        const file = new CodeFile();
+        file.addBlock('console.log("test");');
 
-        file.write();
+        const result = file.write(tempFile);
 
-        const generatedContent = fs.readFileSync(tempFile, 'utf8');
-        const parsedData = JSON.parse(generatedContent);
-
-        // Verify the JSON contains the properties we set
-        assert.strictEqual(parsedData.name, 'test-extension');
-        assert.strictEqual(parsedData.version, '1.0.0');
-        assert.deepStrictEqual(parsedData.permissions, ['storage', 'activeTab']);
-
-        // Verify relPath is not included in the JSON
-        assert.strictEqual(parsedData.relPath, undefined);
+        assert.strictEqual(result, file);
 
       } finally {
-        // Clean up
         if (fs.existsSync(tempFile)) {
           fs.unlinkSync(tempFile);
         }

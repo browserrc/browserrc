@@ -235,33 +235,48 @@ declare module 'browserrc' {
   export function build(options: BuildOptions): Promise<void>;
 
   /**
-   * A segment of code for a specific environment (page or background)
+   * Simple JSON file container for manifest files
    */
-  export class CodeSegment {
-    environment: Environment;
-    code: string;
+  export class JSONFile {
+    relPath: string | null;
 
-    constructor(environment: Environment);
-
-    addLine(line: string): void;
-    addLines(...lines: string[]): void;
+    constructor(relPath: string, properties?: object);
+    write(outputDir?: string): void;
   }
 
   /**
-   * A JavaScript file builder that can include code segments and constants
+   * Unified code file container that can be used as a segment or standalone file
    */
-  export class JavascriptFile {
-    relPath: string;
+  export class CodeFile {
+    relPath: string | null;
     constants: Map<string, any>;
-    body: string;
+    code: string;
+    context: object;
 
-    constructor(relPath: string);
+    constructor(props?: {
+        relPath?: string | null;
+        code?: string;
+        constants?: Map<string, any> | Array<[string, any]>;
+        context?: object;
+    });
 
-    includeSegment(segment: CodeSegment): void;
-    includeConstant(name: string, value: any): void;
-    includeIIFE(fn: Function): void;
-    includeFunction(fn: Function, name?: string): void;
-    write(outputDir?: string): void;
+    addLine(line: string): CodeFile;
+    addLines(...lines: string[]): CodeFile;
+    addBlock(codeBlock: string): CodeFile;
+    includeFileContent(filePath: string): CodeFile;
+    includeConstant(name: string, value: any): CodeFile;
+    includeSegment(segment: CodeFile): CodeFile;
+    includeIIFE(fn: Function): CodeFile;
+    includeFunction(fn: Function, name?: string): CodeFile;
+
+    setContext(keyOrObj: string | object, value?: any): CodeFile;
+    getContext(): object;
+    clearContext(): CodeFile;
+    renderTemplate(additionalContext?: object): CodeFile;
+    bundle(options?: object): Promise<CodeFile>;
+
+    getFinalCode(): string;
+    write(outputPath?: string | null, outputDir?: string): CodeFile;
   }
 
   /**
