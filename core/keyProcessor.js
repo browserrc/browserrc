@@ -108,10 +108,10 @@ export class KeyProcessor {
   /**
    * Set a keybinding using Whaleboat key notation
    */
-  set(sequence, action) {
+  set(sequence, callback) {
     const keys = parseKeySequence(sequence);
     const keyStrings = keys.map(k => k.string);
-    this.currentRoot.insert(keyStrings, action);
+    this.currentRoot.insert(keyStrings, callback);
   }
 
   /**
@@ -184,7 +184,6 @@ export class KeyProcessor {
   buildContextWithState(executeActionCallback) {
     return {
       ...(this.context || {}),
-      executeAction: executeActionCallback,
       keys: [...this.matchedPath.map((n) => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean),
       mode: this.currentMode,
       currentNode: this.currentNode,
@@ -193,10 +192,9 @@ export class KeyProcessor {
       pendingAmbiguousAction: this.pendingAmbiguousAction,
       timeoutType: this.timeoutType,
       resetTimeout: (type = "SEQUENCE") => this.setTimer(type, executeActionCallback),
-      executeTrieAction: (action) => {
-        if (action && typeof action === "object") {
-          executeActionCallback(action, { actionName: "extension", keySequence: [] });
-        }
+      executeTrieAction: (callback) => {
+        const metadata = { actionName: "extension", keySequence: [] };
+        callback(metadata);
       },
     };
   }
@@ -371,18 +369,19 @@ export class KeyProcessor {
   }
 
   /**
-   * Execute action 
+   * Execute callback
    */
-  executeActionInternal(action, executeActionCallback) {
+  executeActionInternal(callback, executeActionCallback) {
     const keySequence = [];
     for (let i = 1; i < this.matchedPath.length; i++) {
       if (this.matchedPath[i].key) keySequence.push(this.matchedPath[i].key);
     }
     if (this.currentNode?.key) keySequence.push(this.currentNode.key);
 
-    const actionName = action?.name || action?.actionId || "unknown";
+    const metadata = { keySequence, actionName: callback.name || "unknown" };
 
-    executeActionCallback(action, { keySequence, actionName });
+    // Call the callback directly with metadata
+    callback(metadata);
   }
 
   /**
