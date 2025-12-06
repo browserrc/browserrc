@@ -244,6 +244,212 @@ describe('JavascriptFile', () => {
     });
   });
 
+  describe('includeIIFE', () => {
+    test('includes basic IIFE', () => {
+      const file = new JavascriptFile('/test.js');
+      const iifeFn = function() {
+        console.log('IIFE executed');
+        return 42;
+      };
+
+      file.includeIIFE(iifeFn);
+
+      const expected = '(function() {\n        console.log(\'IIFE executed\');\n        return 42;\n      })();';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('includes multiple IIFEs with proper separation', () => {
+      const file = new JavascriptFile('/test.js');
+
+      const iife1 = function() { console.log('first'); };
+      const iife2 = function() { console.log('second'); };
+
+      file.includeIIFE(iife1);
+      file.includeIIFE(iife2);
+
+      const expected = '(function() { console.log(\'first\'); })();\n\n(function() { console.log(\'second\'); })();';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('handles arrow function IIFE', () => {
+      const file = new JavascriptFile('/test.js');
+      const arrowIIFE = () => {
+        const result = 1 + 2;
+        return result;
+      };
+
+      file.includeIIFE(arrowIIFE);
+
+      const expected = '(() => {\n        const result = 1 + 2;\n        return result;\n      })();';
+      assert.strictEqual(file.body, expected);
+    });
+
+    testGeneratedCode('generates valid code with IIFE', (file) => {
+      const iifeFn = function() {
+        const message = 'Hello from IIFE';
+        console.log(message);
+      };
+      file.includeIIFE(iifeFn);
+    }, (file, generatedCode) => {
+      // Verify the generated code contains the IIFE
+      assert.ok(generatedCode.includes('(function() {'), 'Should contain IIFE start');
+      assert.ok(generatedCode.includes('console.log(message);'), 'Should contain IIFE body');
+      assert.ok(generatedCode.includes('})();'), 'Should contain IIFE end');
+      assert.ok(generatedCode.includes('Hello from IIFE'), 'Should contain the message');
+    });
+  });
+
+  describe('includeFunction', () => {
+    test('includes anonymous function without name', () => {
+      const file = new JavascriptFile('/test.js');
+      const anonFn = function() {
+        return 'anonymous';
+      };
+
+      file.includeFunction(anonFn);
+
+      const expected = 'function() {\n        return \'anonymous\';\n      }';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('renames anonymous function when name provided', () => {
+      const file = new JavascriptFile('/test.js');
+      const anonFn = function() {
+        return 'hello world';
+      };
+
+      file.includeFunction(anonFn, 'sayHello');
+
+      const expected = 'function sayHello() {\n        return \'hello world\';\n      }';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('includes named function without name parameter', () => {
+      const file = new JavascriptFile('/test.js');
+
+      function originalName() {
+        return 'named function';
+      }
+
+      file.includeFunction(originalName);
+
+      const expected = 'function originalName() {\n        return \'named function\';\n      }';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('renames named function when name provided', () => {
+      const file = new JavascriptFile('/test.js');
+
+      function originalName() {
+        return 'hello world';
+      }
+
+      file.includeFunction(originalName, 'newName');
+
+      const expected = 'function newName() {\n        return \'hello world\';\n      }';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('includes multiple functions with proper separation', () => {
+      const file = new JavascriptFile('/test.js');
+
+      const fn1 = function() { return 1; };
+      const fn2 = function() { return 2; };
+
+      file.includeFunction(fn1, 'getOne');
+      file.includeFunction(fn2, 'getTwo');
+
+      const expected = 'function getOne() { return 1; }\n\nfunction getTwo() { return 2; }';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('includes arrow function with name', () => {
+      const file = new JavascriptFile('/test.js');
+      const arrowFn = () => {
+        return 'arrow result';
+      };
+
+      file.includeFunction(arrowFn, 'arrowFunc');
+
+      const expected = 'const arrowFunc = () => {\n        return \'arrow result\';\n      };';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('throws error for arrow function without name', () => {
+      const file = new JavascriptFile('/test.js');
+      const arrowFn = () => console.log('arrow');
+
+      assert.throws(() => {
+        file.includeFunction(arrowFn);
+      }, /Arrow functions must have a name parameter/);
+    });
+
+    test('handles async arrow functions', () => {
+      const file = new JavascriptFile('/test.js');
+      const asyncArrowFn = async () => {
+        await Promise.resolve();
+        return 'async result';
+      };
+
+      file.includeFunction(asyncArrowFn, 'asyncFunc');
+
+      const expected = 'const asyncFunc = async () => {\n        await Promise.resolve();\n        return \'async result\';\n      };';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('handles arrow function with parameters', () => {
+      const file = new JavascriptFile('/test.js');
+      const arrowWithParams = (a, b) => a + b;
+
+      file.includeFunction(arrowWithParams, 'add');
+
+      const expected = 'const add = (a, b) => a + b;';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('handles async functions', () => {
+      const file = new JavascriptFile('/test.js');
+
+      async function asyncFn() {
+        await Promise.resolve();
+        return 'async';
+      }
+
+      file.includeFunction(asyncFn, 'renamedAsync');
+
+      const expected = 'async function renamedAsync() {\n        await Promise.resolve();\n        return \'async\';\n      }';
+      assert.strictEqual(file.body, expected);
+    });
+
+    test('mixes different function types', () => {
+      const file = new JavascriptFile('/test.js');
+
+      const anonFn = function() { console.log('anon'); };
+      function namedFn() { return true; }
+      const arrowFn = () => 'arrow';
+
+      file.includeFunction(anonFn, 'renamedAnon');
+      file.includeFunction(namedFn); // keep original name
+      file.includeFunction(arrowFn, 'myArrow');
+
+      const expected = 'function renamedAnon() { console.log(\'anon\'); }\n\nfunction namedFn() { return true; }\n\nconst myArrow = () => \'arrow\';';
+      assert.strictEqual(file.body, expected);
+    });
+
+    testGeneratedCode('generates valid code with functions', (file) => {
+      const helperFn = function() {
+        const utils = { add: (a, b) => a + b };
+        return utils;
+      };
+      file.includeFunction(helperFn, 'createUtils');
+    }, (file, generatedCode) => {
+      // Verify the generated code contains the renamed function
+      assert.ok(generatedCode.includes('function createUtils() {'), 'Should contain renamed function');
+      assert.ok(generatedCode.includes('const utils = { add: (a, b) => a + b };'), 'Should contain function body');
+      assert.ok(generatedCode.includes('return utils;'), 'Should contain return statement');
+    });
+  });
+
   describe('write', () => {
     testGeneratedCode('writes file with constants and body', (file) => {
       // Add some constants

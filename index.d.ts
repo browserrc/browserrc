@@ -259,6 +259,8 @@ declare module 'browserrc' {
 
     includeSegment(segment: CodeSegment): void;
     includeConstant(name: string, value: any): void;
+    includeIIFE(fn: Function): void;
+    includeFunction(fn: Function, name?: string): void;
     write(outputDir?: string): void;
   }
 

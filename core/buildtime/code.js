@@ -78,6 +78,56 @@ export class JavascriptFile {
     includeConstant(name, value) {
         this.constants.set(name, value);
     }
+    
+    /**
+     * @param {Function} code - The code to include in the IIFE
+     */
+    includeIIFE(fn) {
+        const fnCode = fn.toString();
+        if (this.body !== '') {
+            this.body += '\n\n';
+        }
+        this.body += `(${fnCode})();`;
+    }
+    
+    /**
+     * Include the function as a module level function
+     * @param {Function} fn - The function to include
+     * @param {string?} name - The name of the function
+     */
+    includeFunction(fn, name = undefined) {
+        const fnCode = fn.toString();
+        if (this.body !== '') {
+            this.body += '\n\n';
+        }
+
+        // Check if it's an arrow function (first line doesn't contain "function")
+        const firstLine = fnCode.split('\n')[0];
+        const isArrowFunction = !firstLine.includes('function');
+
+        if (isArrowFunction) {
+            // Arrow functions must have a name parameter
+            if (!name) {
+                throw new Error('Arrow functions must have a name parameter');
+            }
+            this.body += `const ${name} = ${fnCode};`;
+            return;
+        }
+
+        // Regular function (named or anonymous)
+        if (name) {
+            // Rename the function by replacing the function name
+            const renamedFnCode = fnCode.replace(
+                /^(async\s+)?function(\s+[a-zA-Z_$][a-zA-Z0-9_$]*)?/,
+                `$1function ${name}`
+            );
+            this.body += renamedFnCode;
+            return;
+        }
+
+        this.body += fnCode;
+    }
+
 
     write(outputDir = '.') {
         const filePath = path.isAbsolute(this.relPath) ? this.relPath : path.join(outputDir, this.relPath);
