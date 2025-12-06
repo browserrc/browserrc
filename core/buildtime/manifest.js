@@ -1,3 +1,5 @@
+import { JSONFile } from "../code.js";
+
 export function generateDefaultName() {
     const adjectives = [
         "adventurous",
