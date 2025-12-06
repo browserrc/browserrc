@@ -1,5 +1,5 @@
 import path from "path";
-import { addContentScript } from "./manifest.js";
+import { addContentScript } from "./manifest.ts";
 import { CodeFile } from "./code.js";
 import { hooks } from "../../index.js";
 

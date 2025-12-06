@@ -1,6 +1,22 @@
 import { JSONFile } from "./code.js";
+import type { BuildPlatforms } from "../../index.js";
 
-export function generateDefaultName() {
+interface ContentScriptEntry {
+    matches: string[];
+    js: string[];
+    run_at: 'document_start' | 'document_end' | 'document_idle';
+    all_frames: boolean;
+}
+
+interface ExtendedJSONFile extends JSONFile {
+    content_scripts: ContentScriptEntry[];
+    manifest_version?: number;
+    version?: string;
+    name?: string;
+    description?: string;
+}
+
+export function generateDefaultName(): string {
     const adjectives = [
         "adventurous",
         "brave",
@@ -22,18 +38,17 @@ export function generateDefaultName() {
         "giraffe",
         "hippo",
     ];
-    
+
     const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
     const noun = nouns[Math.floor(Math.random() * nouns.length)];
     return `${adjective}-${noun}`;
 }
 
-
 export const DEFAULT_VERSION = '0.0.1';
 export const DEFAULT_DESCRIPTION = "A browser extension that nobody thought was important enough to write a description for, but is programmed using an awesome framework called browserrc";
 
 // internal manifest files state
-const MANIFESTS = {
+const MANIFESTS: Record<string, ExtendedJSONFile> = {
     chrome: Object.assign(new JSONFile('chrome/manifest.json'), { content_scripts: [] }),
     firefox: Object.assign(new JSONFile('firefox/manifest.json'), { content_scripts: [] }),
 };
@@ -46,27 +61,24 @@ export const manifest = {
     description: DEFAULT_DESCRIPTION,
 };
 
-
 /**
  * Platform-agnostic API for adding content scripts
- *
- * @param {Object} options - Content script configuration options
- * @param {string[]} options.matches - URL patterns to match for content script injection
- * @param {string[]} options.js - JavaScript files to inject
- * @param {string} [options.run_at='document_idle'] - When to run the content script
- * @param {boolean} [options.all_frames=false] - Whether to inject into all frames
- * @param {Object} options.platforms - Target platforms for the content script
  */
-export function addContentScript(options) {
+export function addContentScript(options: import("../../index.js").ContentScriptOptions): void {
     const {
-        matches,
+        matches = ['<all_urls>'],
         js,
         run_at = 'document_idle',
         all_frames = false,
         platforms = { chrome: true, firefox: true },
     } = options;
 
-    const contentScriptEntry = {
+    // js is required for content scripts
+    if (!js || js.length === 0) {
+        throw new Error('Content script must specify js files');
+    }
+
+    const contentScriptEntry: ContentScriptEntry = {
         matches,
         js,
         run_at,
@@ -81,11 +93,10 @@ export function addContentScript(options) {
     }
 }
 
-
 /**
  * Merge user manifest with internal manifest state to produce the final manifest files, and write them
  */
-export function buildManifests(outputDir, platforms) {
+export function buildManifests(outputDir: string, platforms: BuildPlatforms): void {
     if (platforms.chrome) {
         Object.assign(MANIFESTS.chrome, {
             manifest_version: 3,
@@ -95,7 +106,7 @@ export function buildManifests(outputDir, platforms) {
         });
         MANIFESTS.chrome.write(outputDir);
     }
-    
+
     if (platforms.firefox) {
         Object.assign(MANIFESTS.firefox, {
             manifest_version: 3,
