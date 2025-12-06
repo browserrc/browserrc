@@ -68,6 +68,4 @@ export function buildManifests(outputDir, platforms) {
         });
         MANIFESTS.firefox.write(outputDir);
     }
-    
-    console.debug('Final Manifests: ', MANIFESTS);
 }
