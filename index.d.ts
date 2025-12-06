@@ -216,12 +216,15 @@ declare module 'browserrc' {
    * The extension manifest object that users can configure
    */
   export const manifest: ManifestProperties;
+  
+  export type BuildPlatform = 'chrome' | 'firefox';
+  export type BuildPlatforms = { chrome: true } | { firefox: true } | { chrome: true, firefox: true };
 
   /**
    * Build options for the build function
    */
   export interface BuildOptions {
-    platforms: string[];
+    platforms: BuildPlatforms;
     rcpath: string;
     outputDir: string;
   }
