@@ -76,7 +76,23 @@ export class JavascriptFile {
     }
 
     includeConstant(name, value) {
-        this.constants.set(name, value);
+        // Convert the value to a proper JavaScript literal string
+        let literalValue;
+        if (typeof value === 'string') {
+            // Escape quotes and wrap in quotes
+            literalValue = JSON.stringify(value);
+        } else if (typeof value === 'number' || typeof value === 'boolean') {
+            // Numbers and booleans can be used directly
+            literalValue = String(value);
+        } else if (value === null) {
+            literalValue = 'null';
+        } else if (value === undefined) {
+            literalValue = 'undefined';
+        } else {
+            // For complex objects, use JSON.stringify
+            literalValue = JSON.stringify(value);
+        }
+        this.constants.set(name, literalValue);
     }
     
     /**

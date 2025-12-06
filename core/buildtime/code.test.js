@@ -235,12 +235,40 @@ describe('JavascriptFile', () => {
     test('adds constant to the map', () => {
       const file = new JavascriptFile('/test.js');
 
-      file.includeConstant('VERSION', '"1.0.0"');
-      file.includeConstant('DEBUG', 'true');
+      file.includeConstant('VERSION', '1.0.0');
+      file.includeConstant('DEBUG', true);
 
       assert.strictEqual(file.constants.get('VERSION'), '"1.0.0"');
       assert.strictEqual(file.constants.get('DEBUG'), 'true');
       assert.strictEqual(file.constants.size, 2);
+    });
+
+    test('handles different value types correctly', () => {
+      const file = new JavascriptFile('/test.js');
+
+      file.includeConstant('STRING_VAL', 'hello world');
+      file.includeConstant('NUMBER_VAL', 42);
+      file.includeConstant('BOOLEAN_VAL', false);
+      file.includeConstant('NULL_VAL', null);
+      file.includeConstant('ARRAY_VAL', [1, 2, 3]);
+      file.includeConstant('OBJECT_VAL', { key: 'value' });
+
+      assert.strictEqual(file.constants.get('STRING_VAL'), '"hello world"');
+      assert.strictEqual(file.constants.get('NUMBER_VAL'), '42');
+      assert.strictEqual(file.constants.get('BOOLEAN_VAL'), 'false');
+      assert.strictEqual(file.constants.get('NULL_VAL'), 'null');
+      assert.strictEqual(file.constants.get('ARRAY_VAL'), '[1,2,3]');
+      assert.strictEqual(file.constants.get('OBJECT_VAL'), '{"key":"value"}');
+    });
+
+    test('escapes quotes in strings', () => {
+      const file = new JavascriptFile('/test.js');
+
+      file.includeConstant('QUOTE_STR', 'He said "hello"');
+      file.includeConstant('SINGLE_QUOTE_STR', "It's working");
+
+      assert.strictEqual(file.constants.get('QUOTE_STR'), '"He said \\"hello\\""');
+      assert.strictEqual(file.constants.get('SINGLE_QUOTE_STR'), '"It\'s working"');
     });
   });
 
@@ -453,8 +481,8 @@ describe('JavascriptFile', () => {
   describe('write', () => {
     testGeneratedCode('writes file with constants and body', (file) => {
       // Add some constants
-      file.includeConstant('NAME', '"test"');
-      file.includeConstant('VALUE', '42');
+      file.includeConstant('NAME', 'test');
+      file.includeConstant('VALUE', 42);
 
       // Add some body content
       const segment = new CodeSegment('page');
@@ -468,8 +496,8 @@ describe('JavascriptFile', () => {
     });
 
     testGeneratedCode('writes file with only constants', (file) => {
-      file.includeConstant('PI', '3.14159');
-      file.includeConstant('E', '2.71828');
+      file.includeConstant('PI', 3.14159);
+      file.includeConstant('E', 2.71828);
     }, (file, generatedCode) => {
       // Verify the generated code contains only constants
       assert.ok(generatedCode.includes('const PI = 3.14159;'), 'Should contain PI constant');

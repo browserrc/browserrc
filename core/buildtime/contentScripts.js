@@ -1,3 +1,4 @@
+import path from "path";
 import { addContentScript } from "./manifest.js";
 import { JavascriptFile } from "./code.js";
 import { hooks } from "../../index.js";
@@ -22,9 +23,17 @@ function dynamicContentScript(relPath, options = {}) {
     staticContentScript(javascriptFile.relPath, options);
     
     // ensure that the file gets written on build
-    hooks.onBuild.register(async ({ outputDir }) => {
-        console.debug('[onBuild] writing content script', javascriptFile.relPath);
-        javascriptFile.write(outputDir);
+    hooks.onBuild.register(async ({ outputDir, platforms }) => {
+        const targetPlatforms = options.platforms || { chrome: true, firefox: true };
+        
+        // Write the content script to each platform-specific directory
+        for (const platform of ['chrome', 'firefox']) {
+            if (platforms?.[platform] && targetPlatforms[platform]) {
+                const platformOutputDir = path.join(outputDir, platform);
+                console.debug(`[onBuild] writing content script to ${platform}:`, javascriptFile.relPath);
+                javascriptFile.write(platformOutputDir);
+            }
+        }
     })
 
     return javascriptFile
