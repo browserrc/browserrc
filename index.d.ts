@@ -235,6 +235,34 @@ declare module 'browserrc' {
   export function build(options: BuildOptions): Promise<void>;
 
   /**
+   * A segment of code for a specific environment (page or background)
+   */
+  export class CodeSegment {
+    environment: Environment;
+    code: string;
+
+    constructor(environment: Environment);
+
+    addLine(line: string): void;
+    addLines(...lines: string[]): void;
+  }
+
+  /**
+   * A JavaScript file builder that can include code segments and constants
+   */
+  export class JavascriptFile {
+    relPath: string;
+    constants: Map<string, any>;
+    body: string;
+
+    constructor(relPath: string);
+
+    includeSegment(segment: CodeSegment): void;
+    includeConstant(name: string, value: any): void;
+    write(outputDir?: string): void;
+  }
+
+  /**
    * Options for configuring content scripts
    */
   export interface ContentScriptOptions {
@@ -253,7 +281,7 @@ declare module 'browserrc' {
      * @param relPath - The relative path to the content script file
      * @param options - Options for the content script
      */
-    dynamic(relPath: string, options?: ContentScriptOptions): any;
+    dynamic(relPath: string, options?: ContentScriptOptions): JavascriptFile;
 
     /**
      * Register a static content script in the manifest
