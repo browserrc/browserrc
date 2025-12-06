@@ -2,6 +2,7 @@
 
 import { Hook } from "../hooks";
 import { buildManifests } from "./manifest.js";
+import nodePath from 'path';
 
 /**
  * @type BuildPlatform = 'chrome' | 'firefox'
@@ -24,7 +25,6 @@ export async function build(options) {
     // run user config here
     // in the final version, we'll need the user's rc file to be bundled with any of it's dependencies
     // for the time being, we'll assume it is pre-prepared and ready for import
-    const { path: nodePath } = require('path');
     const resolvedPath = nodePath.isAbsolute(rcpath) ? rcpath : nodePath.resolve(process.cwd(), rcpath);
     const userModule = await import(`file://${resolvedPath}`);
     // Not doing anything with it yet, but we have access to the default exports 
