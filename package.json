@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "test": "node --test core/keyProcessor.test.js",
-    "build": "node -e \"console.log('✓ Package valid'); require('./index.js'); console.log('✓ Module builds successfully');\""
+    "build": "node -e \"console.log('✓ Package valid'); import('./index.js').then(() => console.log('✓ Module builds successfully')).catch(err => { console.error('✗ Module build failed:', err.message); process.exit(1); });\""
   },
   "keywords": [
     "browser-extension",

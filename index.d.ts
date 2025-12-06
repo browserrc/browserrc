@@ -1,10 +1,5 @@
 declare module 'browserrc' {
   /**
-   * Returns a greeting message from browserrc
-   */
-  export function hello(): string;
-
-  /**
    * The current version of browserrc
    */
   export const version: string;
@@ -99,4 +94,108 @@ declare module 'browserrc' {
     insert(keySequence: string[], action: Function): void;
     find(keySequence: string[]): TrieNode | null;
   }
+
+  // ============================================================================
+  // Action System Types
+  // ============================================================================
+
+  /**
+   * Extract the first parameter type from a function
+   */
+  export type ExtractParams<F> = F extends (params: infer P) => any ? P : never;
+
+  /**
+   * Remove all keys from ActionParams type from parameter type
+   */
+  export type OmitActionParams<P, AP> = Omit<P, keyof AP>;
+
+  /**
+   * Check if a type has no properties
+   */
+  export type IsEmpty<T> = keyof T extends never ? true : false;
+
+  /**
+   * Base parameter type for action handlers (extensible)
+   * Currently contains ctx, but can be extended in the future
+   */
+  export type ActionParams<Ctx> = {
+    ctx: Ctx;
+  };
+
+  /**
+   * Parameter type for page action handlers
+   */
+  export type PageActionParams = ActionParams<PageContext>;
+
+  /**
+   * Parameter type for background action handlers
+   */
+  export type BackgroundActionParams = ActionParams<BackgroundContext>;
+
+  /**
+   * Base context interface available in all environments
+   */
+  export interface Context {
+    environment: 'page' | 'background' | 'unknown';
+  }
+
+  /**
+   * Context available in page (content script) environment
+   */
+  export interface PageContext extends Context {
+    environment: 'page';
+  }
+
+  /**
+   * Context available in background script environment
+   */
+  export interface BackgroundContext extends Context {
+    environment: 'background';
+  }
+
+  /**
+   * Action handler function signature
+   */
+  export type ActionHandler<Ctx = Context, I = {}, R = void> =
+    (params: ActionParams<Ctx> & I) => Promise<R>;
+
+  /**
+   * An action that can be executed
+   */
+  export interface Action<Ctx = Context, I = {}, R = void> {
+    id: string;
+    handler: ActionHandler<Ctx, I, R>;
+  }
+
+  /**
+   * Type alias for actions in page context
+   */
+  export type PageAction<I = {}, R = void> = Action<PageContext, I, R>;
+
+  /**
+   * Type alias for actions in background context
+   */
+  export type BackgroundAction<I = {}, R = void> = Action<BackgroundContext, I, R>;
+
+
+  /**
+   * Create an action from a handler function
+   */
+  export function createAction<Ctx = Context, I = {}, R = void>(
+    fn: ActionHandler<Ctx, I, R>
+  ): Action<Ctx, I, R>;
+
+  /**
+   * Create a page action from a handler function
+   */
+  export function createPageAction<I = {}, R = void>(
+    fn: ActionHandler<PageContext, I, R>
+  ): PageAction<I, R>;
+
+  /**
+   * Create a background action from a handler function
+   */
+  export function createBackgroundAction<I = {}, R = void>(
+    fn: ActionHandler<BackgroundContext, I, R>
+  ): BackgroundAction<I, R>;
 }
