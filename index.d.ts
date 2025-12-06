@@ -322,5 +322,6 @@ declare module 'browserrc' {
      */
     onBuild: Hook<[BuildOptions]>;
   };
-
+  
+  export function onAllPages(fn: () => void): void;
 }
