@@ -298,7 +298,7 @@ declare module 'browserrc' {
      * @param relPath - The relative path to the content script file
      * @param options - Options for the content script
      */
-    dynamic(relPath: string, options?: ContentScriptOptions): JavascriptFile;
+    dynamic(relPath: string, options?: ContentScriptOptions): CodeFile;
 
     /**
      * Register a static content script in the manifest
@@ -306,6 +306,11 @@ declare module 'browserrc' {
      * @param options - Options for the content script
      */
     static(relPath: string, options?: ContentScriptOptions): void;
+
+    /**
+     * Create a key handling content script
+     */
+    keyHandling(): CodeFile;
   };
 
   /**

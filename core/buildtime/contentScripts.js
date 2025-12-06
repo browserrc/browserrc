@@ -51,7 +51,14 @@ function staticContentScript(relPath, options = {}) {
 }
 
 
+function keyHandling() {
+    return new CodeFile({ relPath: 'content/keyHandling.js' })
+        .includeFileContent(path.join(__dirname, '..', '..', 'resources', 'segments', 'content', 'inputProcessing.hbs'))
+}
+
+
 export default {
     dynamic: dynamicContentScript,
     static: staticContentScript,
+    keyHandling: keyHandling,
 }

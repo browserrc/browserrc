@@ -1,0 +1,15 @@
+// Input handling code for content scripts - Template Example
+// Rename to inputProcessing.hbs to enable Handlebars templating
+import { KeyProcessor } from "../../../core/keyProcessor";
+
+const keyProcessor = new KeyProcessor({{keyProcessorOptions}});
+
+// use capture phase to ensure we get input first
+document.addEventListener('keydown', keyProcessor.processKey, true);
+document.addEventListener('keyup', keyProcessor.handleKeyUp, true);
+
+{{#if isDebug}}
+keyProcessor.onKey.register((input) => {
+    console.log('Key pressed:', input);
+});
+{{/if}}

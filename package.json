@@ -13,8 +13,8 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test core/keyProcessor.test.js core/buildtime/code.test.js",
-    "build": "node -e \"console.log('✓ Package valid'); import('./index.js').then(() => console.log('✓ Module builds successfully')).catch(err => { console.error('✗ Module build failed:', err.message); process.exit(1); });\""
+    "test": "bun run node --test core/keyProcessor.test.js core/buildtime/code.test.js",
+    "build": "bun run node -e \"console.log('✓ Package valid'); import('./index.js').then(() => console.log('✓ Module builds successfully')).catch(err => { console.error('✗ Module build failed:', err.message); process.exit(1); });\""
   },
   "keywords": [
     "browser-extension",
@@ -35,6 +35,9 @@
   },
   "homepage": "https://github.com/browserrc/browserrc",
   "packageManager": "bun@1.0.0",
+  "dependencies": {
+    "handlebars": "^4.7.8"
+  },
   "engines": {
     "bun": ">=1.0.0"
   }
