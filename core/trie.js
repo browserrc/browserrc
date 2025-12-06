@@ -3,7 +3,7 @@ import { Hook } from './hooks.js';
 /**
  * Options for configuring a TrieNode
  * @typedef {Object} TrieNodeOptions
- * @property {Function} [action] - The action function for this node
+ * @property {boolean} [isCompletable=false] - Whether this sequence can be completed at this node
  * @property {boolean} [forwardOnNonMatch=false] - Whether to forward key if no match
  * @property {Object} [metadata={}] - Additional metadata for this node
  */
@@ -11,12 +11,12 @@ import { Hook } from './hooks.js';
 /**
  * Hooks available on a TrieNode for lifecycle events
  * @typedef {Object} TrieNodeHooks
- * @property {Hook} onMatched - Called when this node is matched
+ * @property {Hook} onMatched - Called when this node is matched in a sequence
  * @property {Hook} onNotMatched - Called when this node fails to match
  * @property {Hook} onChildMatched - Called when a child of this node matches
- * @property {Hook} onChildBranchCompleted - Called when child branch completes
+ * @property {Hook} onSequenceComplete - Called when sequence completes at this node
  * @property {Hook} onNoChildMatched - Called when no child matches
- * @property {Hook} onNoChildBranchCompleted - Called when child branch fails
+ * @property {Hook} onBranchFailed - Called when child branch fails
  */
 
 export class TrieNode {
@@ -24,8 +24,8 @@ export class TrieNode {
   key;
   /** @type {Map<string, TrieNode>} */
   children;
-  /** @type {Function|null} */
-  action;
+  /** @type {boolean} */
+  isCompletable;
   /** @type {boolean} */
   forwardOnNonMatch;
   /** @type {Object} */
@@ -40,7 +40,7 @@ export class TrieNode {
   constructor(key = null, options = {}) {
     this.key = key;
     this.children = new Map();
-    this.action = options.action ?? null;
+    this.isCompletable = options.isCompletable ?? false;
     this.forwardOnNonMatch = options.forwardOnNonMatch ?? false;
     this.metadata = options.metadata ?? {};
 
@@ -48,9 +48,9 @@ export class TrieNode {
       onMatched: new Hook(`onMatched[${key}]`, 'Called when this node is matched'),
       onNotMatched: new Hook(`onNotMatched[${key}]`, 'Called when this node fails to match'),
       onChildMatched: new Hook(`onChildMatched[${key}]`, 'Called when a child of this node matches'),
-      onChildBranchCompleted: new Hook(`onChildBranchCompleted[${key}]`, 'Called when child branch completes'),
+      onSequenceComplete: new Hook(`onSequenceComplete[${key}]`, 'Called when sequence completes at this node'),
       onNoChildMatched: new Hook(`onNoChildMatched[${key}]`, 'Called when no child matches'),
-      onNoChildBranchCompleted: new Hook(`onNoChildBranchCompleted[${key}]`, 'Called when child branch fails'),
+      onBranchFailed: new Hook(`onBranchFailed[${key}]`, 'Called when child branch fails'),
     };
   }
 
@@ -82,19 +82,19 @@ export class TrieNode {
   }
 
   /**
-   * Check if this is a leaf node (has an action)
-   * @returns {boolean} True if the node has an action
+   * Check if this sequence can be completed at this node
+   * @returns {boolean} True if the sequence can be completed here
    */
-  isLeaf() {
-    return this.action !== null;
+  canComplete() {
+    return this.isCompletable;
   }
 
   /**
-   * Check if this node is ambiguous (has both an action and children)
-   * @returns {boolean} True if the node has both an action and children
+   * Check if this node is ambiguous (can be completed here but also has children)
+   * @returns {boolean} True if the node is completable and has children
    */
   isAmbiguous() {
-    return this.action !== null && this.children.size > 0;
+    return this.isCompletable && this.children.size > 0;
   }
 }
 
@@ -117,13 +117,12 @@ export class Trie {
   }
 
   /**
-   * Insert a key sequence and action into the trie
+   * Insert a key sequence into the trie
    * @param {string[]} keySequence - Array of key strings
-   * @param {Function} action - Action function to execute when sequence is matched
    * @param {Object} options - Additional options like repeat
    * @returns {void}
    */
-  insert(keySequence, action, options = {}) {
+  insert(keySequence, options = {}) {
     let currentNode = this.root;
 
     for (const key of keySequence) {
@@ -135,7 +134,7 @@ export class Trie {
       currentNode = child;
     }
 
-    currentNode.action = action;
+    currentNode.isCompletable = true;
 
     // Store metadata from options
     if (options.repeat !== undefined) {

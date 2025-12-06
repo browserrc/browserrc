@@ -29,7 +29,6 @@ describe('KeyProcessor', () => {
       assert.strictEqual(processor.currentMode, 'n');
       assert.strictEqual(processor.keyTimeout, 1000);
       assert.strictEqual(processor.ambiguityTimeout, 300);
-      assert.strictEqual(processor.repeatInterval, 50);
       assert.strictEqual(processor.isActive, true);
       assert.deepStrictEqual(processor.forceExecuteKeys, ['<Enter>']);
       assert.ok(processor.modes.has('n'));
@@ -37,7 +36,11 @@ describe('KeyProcessor', () => {
       assert.ok(processor.onKey instanceof Hook);
       assert.ok(processor.onNodeMatched instanceof Hook);
       assert.ok(processor.onSequenceReset instanceof Hook);
-      assert.ok(processor.onActionExecuted instanceof Hook);
+      assert.ok(processor.onSequenceComplete instanceof Hook);
+      assert.ok(processor.onAmbiguousTimeout instanceof Hook);
+      assert.ok(processor.onRepeat instanceof Hook);
+      assert.ok(processor.onRepeatStart instanceof Hook);
+      assert.ok(processor.onRepeatEnd instanceof Hook);
     });
 
     test('constructor with custom options', () => {
@@ -52,7 +55,6 @@ describe('KeyProcessor', () => {
 
       assert.strictEqual(processor.keyTimeout, 500);
       assert.strictEqual(processor.ambiguityTimeout, 100);
-      assert.strictEqual(processor.repeatInterval, 25);
       assert.strictEqual(processor.defaultMode, 'insert');
       assert.strictEqual(processor.onKey, customHook);
     });
@@ -71,7 +73,6 @@ describe('KeyProcessor', () => {
 
       assert.strictEqual(processor.keyTimeout, 750);
       assert.strictEqual(processor.ambiguityTimeout, 150);
-      assert.strictEqual(processor.repeatInterval, 30);
       assert.strictEqual(processor.defaultMode, 'visual');
       assert.deepStrictEqual(processor.forceExecuteKeys, ['<Space>', '<Enter>']);
       assert.deepStrictEqual(processor.context, { test: 'context' });
@@ -97,13 +98,10 @@ describe('KeyProcessor', () => {
 
     test('clear and clearAll', () => {
       const processor = new KeyProcessor();
-      const callbackA = createMockCallback();
-      const callbackBB = createMockCallback();
-      const callbackX = createMockCallback();
 
       // Set some keybindings
-      processor.set('a', callbackA);
-      processor.set('bb', callbackBB);
+      processor.set('a');
+      processor.set('bb');
 
       // Clear current mode
       processor.clear();
@@ -114,7 +112,7 @@ describe('KeyProcessor', () => {
 
       // Add another mode and test clearAll
       processor.setMode('visual');
-      processor.set('x', callbackX);
+      processor.set('x');
       processor.clearAll();
 
       assert.strictEqual(processor.modes.size, 1);
@@ -126,24 +124,21 @@ describe('KeyProcessor', () => {
   describe('Keybinding Registration', () => {
     test('set method with simple key', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('a', callback);
+      processor.set('a');
 
       const trie = processor.currentRoot;
       const root = trie.root;
       const nodeA = root.getChild('a');
 
       assert.ok(nodeA);
-      assert.ok(nodeA.isLeaf());
-      assert.strictEqual(nodeA.action, callback);
+      assert.ok(nodeA.canComplete());
     });
 
     test('set method with sequence', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('abc', callback);
+      processor.set('abc');
 
       const trie = processor.currentRoot;
       const root = trie.root;
@@ -154,17 +149,14 @@ describe('KeyProcessor', () => {
       assert.ok(nodeA);
       assert.ok(nodeB);
       assert.ok(nodeC);
-      assert.ok(nodeC.isLeaf());
-      assert.strictEqual(nodeC.action, callback);
+      assert.ok(nodeC.canComplete());
     });
 
     test('set method with modifiers', () => {
       const processor = new KeyProcessor();
-      const callbackA = createMockCallback();
-      const callbackB = createMockCallback();
 
-      processor.set('<C-a>', callbackA);
-      processor.set('<S-b>', callbackB);
+      processor.set('<C-a>');
+      processor.set('<S-b>');
 
       const trie = processor.currentRoot;
       const root = trie.root;
@@ -173,69 +165,57 @@ describe('KeyProcessor', () => {
 
       assert.ok(nodeCtrlA);
       assert.ok(nodeShiftB);
-      assert.strictEqual(nodeCtrlA.action, callbackA);
-      assert.strictEqual(nodeShiftB.action, callbackB);
     });
   });
 
   describe('Key Processing', () => {
     test('processKeyParsed with simple key', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('a', callback);
+      processor.set('a');
 
       const key = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      const result = processor.processKeyParsed(key, () => {}); // executeAction callback no longer used
+      const result = processor.processKeyParsed(key);
 
       assert.strictEqual(result, true); // Should consume the key (true = consumed)
-      assert.strictEqual(callback.getCalls().length, 1);
-      assert.deepStrictEqual(callback.getCalls()[0].metadata.keySequence, ['a']);
     });
 
     test('processKeyParsed with sequence', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('ab', callback);
+      processor.set('ab');
 
       // First key
       const keyA = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      const resultA = processor.processKeyParsed(keyA, () => {});
+      const resultA = processor.processKeyParsed(keyA);
       assert.strictEqual(resultA, true); // Should consume and continue sequence
-      assert.strictEqual(callback.getCalls().length, 0); // Should not execute yet
 
       // Second key
       const keyB = { string: 'b', key: 'b', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      const resultB = processor.processKeyParsed(keyB, () => {});
-      assert.strictEqual(resultB, true); // Should consume and execute
-      assert.strictEqual(callback.getCalls().length, 1);
-      assert.deepStrictEqual(callback.getCalls()[0].metadata.keySequence, ['a', 'b']);
+      const resultB = processor.processKeyParsed(keyB);
+      assert.strictEqual(resultB, true); // Should consume and complete sequence
     });
 
     test('processKeyParsed with invalid sequence', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('ab', callback);
+      processor.set('ab');
 
       // First key (valid)
       const keyA = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      processor.processKeyParsed(keyA, () => {});
+      processor.processKeyParsed(keyA);
 
       // Invalid second key
       const keyX = { string: 'x', key: 'x', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      const resultX = processor.processKeyParsed(keyX, () => {});
+      const resultX = processor.processKeyParsed(keyX);
 
       assert.strictEqual(resultX, true); // Should consume invalid key (reset sequence)
-      assert.strictEqual(callback.getCalls().length, 0); // Should not execute
     });
 
     test('processKeyEvent with KeyboardEvent', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('a', callback);
+      processor.set('a');
 
       // Mock KeyboardEvent
       const event = {
@@ -248,10 +228,9 @@ describe('KeyProcessor', () => {
         stopPropagation: () => {}
       };
 
-      const result = processor.processKeyEvent(event, () => {});
+      const result = processor.processKeyEvent(event);
 
       assert.strictEqual(result, true); // Should consume the event
-      assert.strictEqual(callback.getCalls().length, 1);
     });
 
     test('processKeyEvent ignores modifier keys', () => {
@@ -267,7 +246,7 @@ describe('KeyProcessor', () => {
         stopPropagation: () => {}
       };
 
-      const result = processor.processKeyEvent(event, () => {});
+      const result = processor.processKeyEvent(event);
 
       assert.strictEqual(result, false); // Should ignore modifier keys
     });
@@ -276,13 +255,12 @@ describe('KeyProcessor', () => {
   describe('Timeout and Sequence Reset', () => {
     test('sequence timeout reset', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('ab', callback);
+      processor.set('ab');
 
       // Start sequence
       const keyA = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      processor.processKeyParsed(keyA, () => {});
+      processor.processKeyParsed(keyA);
 
       // Should be in sequence
       assert.ok(processor.currentNode !== processor.currentRoot.root);
@@ -292,18 +270,16 @@ describe('KeyProcessor', () => {
       processor.resetToRoot();
 
       assert.strictEqual(processor.currentNode !== processor.currentRoot.root, false);
-      assert.strictEqual(callback.getCalls().length, 0); // Should not have executed
     });
 
     test('resetToRoot', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('ab', callback);
+      processor.set('ab');
 
       // Start sequence
       const keyA = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      processor.processKeyParsed(keyA, () => {});
+      processor.processKeyParsed(keyA);
 
       assert.ok(processor.currentNode !== processor.currentRoot.root);
       assert.ok(processor.matchedPath.length > 0);
@@ -312,7 +288,6 @@ describe('KeyProcessor', () => {
 
       assert.strictEqual(processor.currentNode !== processor.currentRoot.root, false);
       assert.deepStrictEqual(processor.matchedPath, []);
-      assert.strictEqual(processor.pendingAmbiguousAction, null);
     });
   });
 
@@ -327,7 +302,7 @@ describe('KeyProcessor', () => {
       });
 
       const key = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      const result = processor.processKeyParsed(key, () => {});
+      const result = processor.processKeyParsed(key);
 
       assert.strictEqual(hookCalled, true);
       assert.strictEqual(result, true); // Hook consumed the key
@@ -343,7 +318,7 @@ describe('KeyProcessor', () => {
       });
 
       const key = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      const result = processor.processKeyParsed(key, () => {});
+      const result = processor.processKeyParsed(key);
 
       assert.strictEqual(hookCalled, true);
       assert.strictEqual(result, false); // Key was forwarded
@@ -359,9 +334,9 @@ describe('KeyProcessor', () => {
 
       // Start sequence
       const keyA = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      processor.processKeyParsed(keyA, () => {});
+      processor.processKeyParsed(keyA);
 
-      const context = processor.buildContextWithState(() => {});
+      const context = processor.buildContextWithState();
 
       assert.deepStrictEqual(context.custom, 'value');
       assert.strictEqual(context.mode, 'n');
@@ -391,74 +366,18 @@ describe('KeyProcessor', () => {
     });
   });
 
-  describe('Key Repeat', () => {
-    test('key repeat functionality', () => {
-      const processor = new KeyProcessor();
-      const callbackX = createMockCallback();
-      const callbackY = createMockCallback();
-
-      // Set up a repeating action
-      processor.set('x', callbackX);
-      processor.currentRoot.insert(['x'], callbackX, { repeat: true });
-
-      const key = { string: 'x', key: 'x', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-
-      // Process the key
-      processor.processKeyParsed(key, () => {});
-
-      // Should have started repeating
-      assert.ok(processor.heldKeys.has('x'));
-
-      // Stop repeating
-      processor.stopRepeating('x');
-      assert.strictEqual(processor.heldKeys.has('x'), false);
-
-      // Stop all repeating
-      processor.startRepeating('y', callbackY, () => {});
-      assert.ok(processor.heldKeys.has('y'));
-      processor.stopAllRepeating();
-      assert.strictEqual(processor.heldKeys.size, 0);
-    });
-
-    test('handleKeyUp stops repeating', () => {
-      const processor = new KeyProcessor();
-      const callback = createMockCallback();
-
-      processor.set('x', callback);
-      processor.currentRoot.insert(['x'], callback, { repeat: true });
-
-      const key = { string: 'x', key: 'x', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      processor.processKeyParsed(key, () => {});
-
-      assert.ok(processor.heldKeys.has('x'));
-
-      // Simulate keyup event
-      const event = {
-        key: 'x',
-        ctrlKey: false,
-        altKey: false,
-        shiftKey: false,
-        metaKey: false
-      };
-
-      processor.handleKeyUp(event);
-      assert.strictEqual(processor.heldKeys.has('x'), false);
-    });
-  });
-
   describe('Utility Methods', () => {
     test('getMatchedSequence', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
-      processor.set('abc', callback);
+      processor.set('abc');
 
       // Start sequence
       const keyA = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
       const keyB = { string: 'b', key: 'b', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
 
-      processor.processKeyParsed(keyA, () => {});
-      processor.processKeyParsed(keyB, () => {});
+      processor.processKeyParsed(keyA);
+      processor.processKeyParsed(keyB);
 
       const sequence = processor.getMatchedSequence();
       assert.deepStrictEqual(sequence, ['a', 'b']);
@@ -466,14 +385,13 @@ describe('KeyProcessor', () => {
 
     test('isInSequence check', () => {
       const processor = new KeyProcessor();
-      const callback = createMockCallback();
 
       assert.strictEqual(processor.currentNode !== processor.currentRoot.root, false);
 
-      processor.set('ab', callback);
+      processor.set('ab');
 
       const keyA = { string: 'a', key: 'a', modifiers: { ctrl: false, alt: false, shift: false, meta: false } };
-      processor.processKeyParsed(keyA, () => {});
+      processor.processKeyParsed(keyA);
 
       assert.strictEqual(processor.currentNode !== processor.currentRoot.root, true);
 
@@ -496,7 +414,7 @@ describe('KeyProcessor', () => {
         stopPropagation: () => {}
       };
 
-      const result = processor.processKeyEvent(event, () => {});
+      const result = processor.processKeyEvent(event);
       assert.strictEqual(result, false); // Should ignore when inactive
     });
   });

@@ -7,7 +7,6 @@
  * - Multi-mode support
  * - Context management
  * - Force execute keys
- * - Key repeat support
  */
 
 import { Trie } from "./trie.js";
@@ -24,6 +23,11 @@ import { Hook } from "./hooks.js";
  * @property {Hook} [onKey] - Hook called for every key press
  * @property {Hook} [onNodeMatched] - Hook called when a node is matched
  * @property {Hook} [onSequenceReset] - Hook called when the key sequence is reset
+ * @property {Hook} [onSequenceComplete] - Hook called when a sequence completes
+ * @property {Hook} [onAmbiguousTimeout] - Hook called when ambiguous sequence times out
+ * @property {Hook} [onRepeat] - Hook called for each repeat
+ * @property {Hook} [onRepeatStart] - Hook called when repeat starts
+ * @property {Hook} [onRepeatEnd] - Hook called when repeat ends
  * @property {Hook} [onActionExecuted] - Hook called when an action is executed
  */
 
@@ -50,33 +54,35 @@ export class KeyProcessor {
     this.timeoutType = null;
     
     // State
-    this.pendingAmbiguousAction = null;
+    this.pendingAmbiguousSequence = null;
     this.matchedPath = [];
     this.isActive = true;
     this.context = null;
-    
+
     // Hooks - create new instances by default, or use provided ones
     this.onKey = options.onKey ?? new Hook('onKey', 'Called for every key press');
     this.onNodeMatched = options.onNodeMatched ?? new Hook('onNodeMatched', 'Called when a node is matched');
     this.onSequenceReset = options.onSequenceReset ?? new Hook('onSequenceReset', 'Called when key sequence resets');
+    this.onSequenceComplete = options.onSequenceComplete ?? new Hook('onSequenceComplete', 'Called when a sequence completes');
+    this.onAmbiguousTimeout = options.onAmbiguousTimeout ?? new Hook('onAmbiguousTimeout', 'Called when ambiguous sequence times out');
+    this.onRepeat = options.onRepeat ?? new Hook('onRepeat', 'Called for each repeat');
+    this.onRepeatStart = options.onRepeatStart ?? new Hook('onRepeatStart', 'Called when repeat starts');
+    this.onRepeatEnd = options.onRepeatEnd ?? new Hook('onRepeatEnd', 'Called when repeat ends');
     this.onActionExecuted = options.onActionExecuted ?? new Hook('onActionExecuted', 'Called after an action is executed');
 
     // Force execute keys
     this.forceExecuteKeys = options.forceExecuteKeys ?? ["<Enter>"];
-
-    // Key repeat support
-    this.heldKeys = new Map();
     this.repeatInterval = options.repeatInterval ?? 50;
+    this.heldKeys = new Map();
   }
 
   /**
    * Configure allowed fields.
    * Only allows updating specific safe fields.
    */
-  configure({ keyTimeout, ambiguityTimeout, repeatInterval, defaultMode, forceExecuteKeys, ctx }) {
+  configure({ keyTimeout, ambiguityTimeout, defaultMode, forceExecuteKeys, ctx }) {
     if (keyTimeout !== undefined) this.keyTimeout = keyTimeout;
     if (ambiguityTimeout !== undefined) this.ambiguityTimeout = ambiguityTimeout;
-    if (repeatInterval !== undefined) this.repeatInterval = repeatInterval;
     if (defaultMode !== undefined) this.defaultMode = defaultMode;
     if (forceExecuteKeys !== undefined) this.forceExecuteKeys = forceExecuteKeys;
     if (ctx !== undefined) this.context = ctx;
@@ -108,10 +114,10 @@ export class KeyProcessor {
   /**
    * Set a keybinding using Whaleboat key notation
    */
-  set(sequence, callback) {
+  set(sequence) {
     const keys = parseKeySequence(sequence);
     const keyStrings = keys.map(k => k.string);
-    this.currentRoot.insert(keyStrings, callback);
+    this.currentRoot.insert(keyStrings);
   }
 
   /**
@@ -138,7 +144,6 @@ export class KeyProcessor {
   resetToRoot() {
     this.currentNode = this.currentRoot.root;
     this.matchedPath = [];
-    this.pendingAmbiguousAction = null;
     this.clearTimeout();
     this.onSequenceReset.trigger(this.context);
   }
@@ -157,15 +162,19 @@ export class KeyProcessor {
   /**
    * Set a timeout
    */
-  setTimer(type, executeAction) {
+  setTimer(type) {
     this.clearTimeout();
     this.timeoutType = type;
     const duration = type === "AMBIGUOUS" ? this.ambiguityTimeout : this.keyTimeout;
 
     this.timeoutId = setTimeout(() => {
-      if (type === "AMBIGUOUS" && this.pendingAmbiguousAction) {
-        this.executeActionInternal(this.pendingAmbiguousAction, executeAction);
-        this.callCompletionHooks(executeAction);
+      if (type === "AMBIGUOUS" && this.pendingAmbiguousSequence) {
+        const sequenceInfo = {
+          keySequence: this.pendingAmbiguousSequence,
+          mode: this.currentMode
+        };
+        this.onAmbiguousTimeout.trigger(sequenceInfo);
+        this.callCompletionHooks();
       }
       this.resetToRoot();
     }, duration);
@@ -181,7 +190,7 @@ export class KeyProcessor {
   /**
    * Build context with current state
    */
-  buildContextWithState(executeActionCallback) {
+  buildContextWithState() {
     return {
       ...(this.context || {}),
       keys: [...this.matchedPath.map((n) => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean),
@@ -189,9 +198,8 @@ export class KeyProcessor {
       currentNode: this.currentNode,
       matchedPath: this.matchedPath,
       forceExecuteKeys: this.forceExecuteKeys,
-      pendingAmbiguousAction: this.pendingAmbiguousAction,
       timeoutType: this.timeoutType,
-      resetTimeout: (type = "SEQUENCE") => this.setTimer(type, executeActionCallback),
+      resetTimeout: (type = "SEQUENCE") => this.setTimer(type),
       executeTrieAction: (callback) => {
         const metadata = { actionName: "extension", keySequence: [] };
         callback(metadata);
@@ -202,24 +210,24 @@ export class KeyProcessor {
   /**
    * Process a key - handles both KeyboardEvent and parsed key objects
    */
-  processKey(eventOrKey, executeAction) {
+  processKey(eventOrKey) {
     if (typeof eventOrKey.preventDefault === 'function') {
-      return this.processKeyEvent(eventOrKey, executeAction);
+      return this.processKeyEvent(eventOrKey);
     }
-    return this.processKeyParsed(eventOrKey, executeAction);
+    return this.processKeyParsed(eventOrKey);
   }
 
   /**
    * Process a KeyboardEvent
    */
-  processKeyEvent(event, executeAction) {
+  processKeyEvent(event) {
     if (!this.isActive) return false;
 
     const modifierKeys = ["Shift", "Control", "Alt", "Meta"];
     if (modifierKeys.includes(event.key)) return false;
 
     const key = eventToKey(event);
-    const shouldForward = this.processKeyInternal(key, event, executeAction);
+    const shouldForward = this.processKeyInternal(key, event);
 
     if (shouldForward) {
       this.clearTimeout();
@@ -234,7 +242,7 @@ export class KeyProcessor {
   /**
    * Process a parsed key object
    */
-  processKeyParsed(key, executeAction) {
+  processKeyParsed(key) {
     const root = this.currentRoot;
     if (!root || !this.currentNode) return false;
 
@@ -242,18 +250,18 @@ export class KeyProcessor {
     if (this.onKey.count > 0) {
       // If any of the hook results are true, return true, otherwise return false
       return this.onKey
-        .trigger(this.buildContextWithState(executeAction), key)
+        .trigger(this.buildContextWithState(), key)
         .some(result => result === true);
     }
 
-    return !this.processKeyCore(key, null, executeAction);
+    return !this.processKeyCore(key, null);
   }
 
   /**
    * Internal processing with full hook support
    */
-  processKeyInternal(key, event, executeAction) {
-    const ctx = this.buildContextWithState(executeAction);
+  processKeyInternal(key, event) {
+    const ctx = this.buildContextWithState();
     const results = this.onKey.trigger(ctx, key, event);
     for (const result of results) {
       if (result === true) return false; // Consume
@@ -261,90 +269,90 @@ export class KeyProcessor {
     }
 
     // Force execute on ambiguous node
-    if (this.currentNode?.isAmbiguous() && this.pendingAmbiguousAction && this.isForceExecuteKey(key)) {
-      this.executeActionInternal(this.pendingAmbiguousAction, executeAction);
-      this.callCompletionHooks(executeAction);
-      this.onActionExecuted.trigger(this.buildContextWithState(executeAction));
+    if (this.currentNode?.isAmbiguous() && this.pendingAmbiguousSequence && this.isForceExecuteKey(key)) {
+      const sequenceInfo = {
+        keySequence: this.pendingAmbiguousSequence,
+        mode: this.currentMode
+      };
+      this.onSequenceComplete.trigger(sequenceInfo);
+      this.callCompletionHooks();
+      this.onActionExecuted.trigger(this.buildContextWithState());
       this.resetToRoot();
       return false;
     }
 
-    return this.processKeyCore(key, event, executeAction);
+    return this.processKeyCore(key, event);
   }
 
   /**
    * Core key processing logic
    */
-  processKeyCore(key, event, executeAction) {
+  processKeyCore(key, event) {
     const child = this.currentNode.getChild(key.string);
 
     if (child) {
-      this.pendingAmbiguousAction = null;
       const previousNode = this.currentNode;
       this.currentNode = child;
       this.matchedPath.push(previousNode);
 
       // Trie node hooks
-      if (previousNode.hooks?.onChildMatched?.count > 0) {
-        this.executeHook(previousNode.hooks.onChildMatched, executeAction);
-      }
+      previousNode.hooks?.onChildMatched?.trigger();
 
       // Global node matched hook
-      const ctx = this.buildContextWithState(executeAction);
+      const ctx = this.buildContextWithState();
       this.onNodeMatched.trigger(ctx, this.currentNode);
       this.currentNode.hooks?.onMatched?.trigger(ctx, this.currentNode);
 
       if (this.currentNode.isAmbiguous()) {
-        this.pendingAmbiguousAction = this.currentNode.action;
-        this.setTimer("AMBIGUOUS", executeAction);
-        if (this.currentNode.hooks?.onMatched?.count > 0) {
-          this.executeHook(this.currentNode.hooks.onMatched, executeAction);
-        }
+        this.pendingAmbiguousSequence = [...this.matchedPath.map((n) => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean);
+        this.setTimer("AMBIGUOUS");
         return false;
-      } else if (this.currentNode.isLeaf() && this.currentNode.action) {
-        
+      } else if (this.currentNode.canComplete()) {
+        const keySequence = [...this.matchedPath.map((n) => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean);
+        const sequenceInfo = { keySequence, mode: this.currentMode };
+
         // Key repeat support
         const repeatOption = this.currentNode.metadata?.repeat;
         const shouldRepeat = repeatOption === true || (typeof repeatOption === 'object' && repeatOption !== null);
-        
+
         if (shouldRepeat) {
           const interval = typeof repeatOption === 'object' ? repeatOption.interval : null;
-          this.startRepeating(key.string, this.currentNode.action, executeAction, interval);
+          this.startRepeating(key.string, sequenceInfo, interval);
         } else {
-          this.executeActionInternal(this.currentNode.action, executeAction);
+          this.onSequenceComplete.trigger(sequenceInfo);
         }
 
-        this.callCompletionHooks(executeAction);
+        this.callCompletionHooks();
         this.onActionExecuted.trigger(ctx);
         this.resetToRoot();
         return false;
       } else {
-        this.setTimer("SEQUENCE", executeAction);
+        this.setTimer("SEQUENCE");
         return false;
       }
     } else {
       // No child matched
       const hadChildren = this.currentNode.hasChildren();
 
-      if (this.currentNode?.isAmbiguous() && this.pendingAmbiguousAction) {
-        this.executeActionInternal(this.pendingAmbiguousAction, executeAction);
-        this.callCompletionHooks(executeAction);
-        this.onActionExecuted.trigger(this.buildContextWithState(executeAction));
+      if (this.currentNode?.isAmbiguous() && this.pendingAmbiguousSequence) {
+        const sequenceInfo = {
+          keySequence: this.pendingAmbiguousSequence,
+          mode: this.currentMode
+        };
+        this.onSequenceComplete.trigger(sequenceInfo);
+        this.callCompletionHooks();
+        this.onActionExecuted.trigger(this.buildContextWithState());
         this.resetToRoot();
         return true;
       }
 
       // Failure hooks
-      if (this.currentNode.hooks?.onNotMatched?.count > 0) {
-        this.executeHook(this.currentNode.hooks.onNotMatched, executeAction);
-      }
-      if (hadChildren && this.currentNode.hooks?.onNoChildMatched?.count > 0) {
-        this.executeHook(this.currentNode.hooks.onNoChildMatched, executeAction);
+      this.currentNode.hooks?.onNotMatched?.trigger();
+      if (hadChildren) {
+        this.currentNode.hooks?.onNoChildMatched?.trigger();
       }
       this.matchedPath.forEach((node) => {
-        if (node.hooks?.onNoChildBranchCompleted?.count > 0) {
-          this.executeHook(node.hooks.onNoChildBranchCompleted, executeAction);
-        }
+        node.hooks?.onBranchFailed?.trigger();
       });
 
       const shouldForward = this.currentNode.forwardOnNonMatch ?? true;
@@ -356,56 +364,28 @@ export class KeyProcessor {
   /**
    * Call completion hooks on matched path
    */
-  callCompletionHooks(executeAction) {
+  callCompletionHooks() {
     this.matchedPath.forEach((node) => {
-      if (node.hooks?.onChildBranchCompleted?.count > 0) {
-        this.executeHook(node.hooks.onChildBranchCompleted, executeAction);
-      }
+      node.hooks?.onSequenceComplete?.trigger();
     });
     const root = this.currentRoot.root;
-    if (root?.hooks?.onChildBranchCompleted?.count > 0) {
-      this.executeHook(root.hooks.onChildBranchCompleted, executeAction);
-    }
+    root?.hooks?.onSequenceComplete?.trigger();
   }
 
-  /**
-   * Execute callback
-   */
-  executeActionInternal(callback, executeActionCallback) {
-    const keySequence = [];
-    for (let i = 1; i < this.matchedPath.length; i++) {
-      if (this.matchedPath[i].key) keySequence.push(this.matchedPath[i].key);
-    }
-    if (this.currentNode?.key) keySequence.push(this.currentNode.key);
 
-    const metadata = { keySequence, actionName: callback.name || "unknown" };
 
-    // Call the callback directly with metadata
-    callback(metadata);
-  }
 
   /**
-   * Execute a trie node hook
+   * Start repeating a sequence
    */
-  executeHook(hook, executeActionCallback) {
-    if (!hook) return;
-    const results = hook.trigger();
-    for (const action of results) {
-      if (action) this.executeActionInternal(action, executeActionCallback);
-    }
-  }
-
-  /**
-   * Start repeating an action
-   */
-  startRepeating(keyString, action, executeActionCallback, customInterval = null) {
+  startRepeating(keyString, sequenceInfo, customInterval = null) {
     this.stopRepeating(keyString);
+    this.onRepeatStart.trigger(sequenceInfo);
     const interval = customInterval ?? this.repeatInterval;
-    this.executeActionInternal(action, executeActionCallback);
     const intervalId = setInterval(() => {
-      this.executeActionInternal(action, executeActionCallback);
+      this.onRepeat.trigger(sequenceInfo);
     }, interval);
-    this.heldKeys.set(keyString, { intervalId, action, executeAction: executeActionCallback });
+    this.heldKeys.set(keyString, { intervalId, sequenceInfo });
   }
 
   /**
@@ -415,6 +395,7 @@ export class KeyProcessor {
     const heldKey = this.heldKeys.get(keyString);
     if (heldKey) {
       clearInterval(heldKey.intervalId);
+      this.onRepeatEnd.trigger(heldKey.sequenceInfo);
       this.heldKeys.delete(keyString);
     }
   }
@@ -425,6 +406,7 @@ export class KeyProcessor {
   stopAllRepeating() {
     for (const [, heldKey] of this.heldKeys.entries()) {
       clearInterval(heldKey.intervalId);
+      this.onRepeatEnd.trigger(heldKey.sequenceInfo);
     }
     this.heldKeys.clear();
   }
