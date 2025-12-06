@@ -75,14 +75,14 @@ export const manifest = {
     /**
      * Get the current permissions array
      */
-    get permissions(): ManifestPermission[] {
-        return Array.from(PERMISSIONS);
+    get permissions(): Permission[] {
+        return Array.from(PERMISSIONS) as Permission[];
     },
 
     /**
      * Set permissions directly (replaces all existing permissions)
      */
-    set permissions(perms: ManifestPermission[]) {
+    set permissions(perms: Permission[]) {
         PERMISSIONS.clear();
         perms.forEach(perm => PERMISSIONS.add(perm));
     },

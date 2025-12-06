@@ -294,7 +294,7 @@ declare module 'browserrc' {
     name?: string;
     version?: string;
     description?: string;
-    permissions: ManifestPermission[];
+    permissions: Permission[];
   };
 
   /**
