@@ -29,7 +29,6 @@ export function generateDefaultName() {
 }
 
 
-export const DEFAULT_VERSION = '0.0.1';
 export const DEFAULT_DESCRIPTION = "A browser extension that nobody thought was important enough to write a description for, but is programmed using an awesome framework called browserrc";
 
 // internal manifest files state
@@ -42,7 +41,7 @@ const MANIFESTS = {
 // imported in browserrc file is `import {manifest} from 'browserrc'
 export const manifest = {
     name: generateDefaultName(),
-    version: DEFAULT_VERSION,
+    version: 3,
     description: DEFAULT_DESCRIPTION,
 };
 
@@ -88,8 +87,8 @@ export function addContentScript(options) {
 export function buildManifests(outputDir, platforms) {
     if (platforms.chrome) {
         Object.assign(MANIFESTS.chrome, {
-            name: manifest.name,
             version: manifest.version,
+            name: manifest.name,
             description: manifest.description,
         });
         MANIFESTS.chrome.write(outputDir);
@@ -97,8 +96,8 @@ export function buildManifests(outputDir, platforms) {
     
     if (platforms.firefox) {
         Object.assign(MANIFESTS.firefox, {
-            name: manifest.name,
             version: manifest.version,
+            name: manifest.name,
             description: manifest.description,
         });
         MANIFESTS.firefox.write(outputDir);
