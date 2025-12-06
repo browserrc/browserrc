@@ -81,6 +81,9 @@ export class JavascriptFile {
 
     write(outputDir = '.') {
         const filePath = path.isAbsolute(this.relPath) ? this.relPath : path.join(outputDir, this.relPath);
+        // Ensure the directory exists
+        const dirPath = path.dirname(filePath);
+        fs.mkdirSync(dirPath, { recursive: true });
         const constantStatements = Array.from(this.constants.entries()).map(([name, value]) => `const ${name} = ${value};`);
         const content = constantStatements.join('\n') + '\n\n' + this.body;
         fs.writeFileSync(filePath, content);
@@ -97,6 +100,9 @@ export class JSONFile {
 
     write(outputDir = '.') {
         const filePath = path.isAbsolute(this.relPath) ? this.relPath : path.join(outputDir, this.relPath);
+        // Ensure the directory exists
+        const dirPath = path.dirname(filePath);
+        fs.mkdirSync(dirPath, { recursive: true });
         // Create a copy of the instance without internal properties
         const dataToSerialize = { ...this };
         delete dataToSerialize.relPath;
