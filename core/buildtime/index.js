@@ -22,9 +22,7 @@ export const onBuild = new Hook('onBuild', 'Called when the browserrc plugin is 
 export async function build(options) {
     const { platforms, rcpath, outputDir } = options;
 
-    // run user config here
-    // in the final version, we'll need the user's rc file to be bundled with any of it's dependencies
-    // for the time being, we'll assume it is pre-prepared and ready for import
+    // Run the user's rc file
     const resolvedPath = nodePath.isAbsolute(rcpath) ? rcpath : nodePath.resolve(process.cwd(), rcpath);
     const userModule = await import(`file://${resolvedPath}`);
     console.debug('User module: ', userModule);
