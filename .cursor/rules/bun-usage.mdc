@@ -1,0 +1,55 @@
+---
+description: This project uses Bun as its JavaScript runtime and package manager
+globs: **/*.{js,ts,json,md}
+---
+# Bun Runtime and Package Manager
+
+This project uses **Bun** as its JavaScript runtime and package manager. All scripts, dependencies, and tooling are designed to work with Bun.
+
+## Why Bun?
+
+- **Fast**: Significantly faster than Node.js and npm
+- **TypeScript Support**: Native TypeScript execution without compilation
+- **Package Manager**: Drop-in replacement for npm with faster installs
+- **Bundler**: Built-in bundling and transpilation
+- **Test Runner**: Native test runner with Jest-like syntax
+
+## Commands
+
+```bash
+# Install dependencies
+bun install
+
+# Run scripts
+bun run <script>
+
+# Run tests
+bun test
+
+# Execute files directly
+bun run <file>
+
+# Add dependencies
+bun add <package>
+```
+
+## Important Notes
+
+- **Do not use `npm` or `yarn`** - this project is configured specifically for Bun
+- **Package.json** specifies `"packageManager": "bun@1.0.0"` to enforce Bun usage
+- All build scripts and tooling expect Bun's runtime environment
+- TypeScript files (`.ts`) are executed directly by Bun without compilation step
+
+## Development Workflow
+
+1. Use `bun install` instead of `npm install`
+2. Use `bun run build` instead of `npm run build`
+3. Use `bun test` instead of `npm test`
+4. For direct execution: `bun run file.js` or `bun -e "code"`
+
+## Troubleshooting
+
+If you encounter issues:
+1. Ensure you're using Bun version 1.0.0 or later
+2. Run `bun install` to ensure dependencies are properly installed
+3. Check that you're not accidentally using `npm` or `node` commands
