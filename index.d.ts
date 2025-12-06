@@ -234,4 +234,14 @@ declare module 'browserrc' {
    */
   export function build(options: BuildOptions): Promise<void>;
 
+  /**
+   * Hooks namespace containing build-time hooks
+   */
+  export const hooks: {
+    /**
+     * Hook called when the browserrc plugin is built
+     */
+    onBuild: Hook<[BuildOptions]>;
+  };
+
 }

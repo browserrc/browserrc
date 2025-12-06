@@ -1,18 +1,16 @@
 // browserrc - A framework for making browser extensions using a single javascript file
 
-const { TrieNode, Trie } = require('./core/trie.js');
-const { Hook } = require('./core/hooks.js');
-const { createAction } = require('./core/rpc.js');
-const { manifest } = require('./core/buildtime/manifest.js');
-const { build } = require('./core/buildtime/index.js');
+import { onBuild } from './core/buildtime/index.js';
 
-module.exports = {
-  hello: () => 'Hello from browserrc!',
-  version: '1.0.0',
-  TrieNode,
-  Trie,
-  Hook,
-  createAction,
-  manifest,
-  build
+export { TrieNode, Trie } from './core/trie.js';
+export { Hook } from './core/hooks.js';
+export { createAction } from './core/rpc.js';
+export { manifest } from './core/buildtime/manifest.js';
+export { build } from './core/buildtime/index.js';
+
+export const hello = () => 'Hello from browserrc!';
+export const version = '1.0.0';
+
+export const hooks = {
+  onBuild
 };

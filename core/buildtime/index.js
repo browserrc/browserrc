@@ -1,6 +1,6 @@
 // Entrypoint for browserrc build plugin
 
-import { Hook } from "../hooks";
+import { Hook } from "../hooks.js";
 import { buildManifests } from "./manifest.js";
 import nodePath from 'path';
 
