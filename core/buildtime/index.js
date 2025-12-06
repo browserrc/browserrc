@@ -27,6 +27,7 @@ export async function build(options) {
     // for the time being, we'll assume it is pre-prepared and ready for import
     const resolvedPath = nodePath.isAbsolute(rcpath) ? rcpath : nodePath.resolve(process.cwd(), rcpath);
     const userModule = await import(`file://${resolvedPath}`);
+    console.debug('User module: ', userModule);
     // Not doing anything with it yet, but we have access to the default exports 
     // This could be used for some features.
 

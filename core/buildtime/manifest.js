@@ -30,9 +30,7 @@ export function generateDefaultName() {
 
 
 export const DEFAULT_VERSION = '0.0.1';
-export const DEFAULT_DESCRIPTION = `
-A browser extension that nobody thought was important enough to write a description for, but is programmed using an awesome framework called browserrc
-`;
+export const DEFAULT_DESCRIPTION = "A browser extension that nobody thought was important enough to write a description for, but is programmed using an awesome framework called browserrc";
 
 // internal manifest files state
 const MANIFESTS = {
@@ -70,4 +68,6 @@ export function buildManifests(outputDir, platforms) {
         });
         MANIFESTS.firefox.write(outputDir);
     }
+    
+    console.debug('Final Manifests: ', MANIFESTS);
 }
