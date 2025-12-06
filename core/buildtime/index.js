@@ -21,10 +21,6 @@ export const onBuild = new Hook('onBuild', 'Called when the browserrc plugin is 
 export async function build(options) {
     const { platforms, rcpath, outputDir } = options;
 
-    if (!Array.isArray(platforms) || platforms.length === 0) {
-        throw new Error("The 'platforms' option must be a non-empty array of platforms.");
-    }
-    
     // run user config here
     // in the final version, we'll need the user's rc file to be bundled with any of it's dependencies
     // for the time being, we'll assume it is pre-prepared and ready for import
