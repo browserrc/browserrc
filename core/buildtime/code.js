@@ -106,6 +106,19 @@ function getSeparator(existingContent) {
         this.context = { ...(props.context || {}) };
         
         this.onPreBundleHook = new Hook('onPreBundle', 'Called immediately before bundling the code file');
+        this._preBundleTriggered = false;
+    }
+
+    /**
+     * Trigger the pre-bundle hook if it hasn't been triggered yet
+     * @param {object} [options={}] - Options to pass to the hook
+     * @private
+     */
+    _triggerPreBundleIfNeeded(options = {}) {
+        if (!this._preBundleTriggered) {
+            this.onPreBundleHook.trigger(this, options);
+            this._preBundleTriggered = true;
+        }
     }
 
 
@@ -256,6 +269,7 @@ function getSeparator(existingContent) {
             // Check by name
             return this.code.includes(symbol.name)
         }
+        return false;
     }
      
     includeFunctionIfReferenced(symbol) {
@@ -309,7 +323,7 @@ function getSeparator(existingContent) {
      * @returns {Promise<CodeFile>}
      */
     async bundle(options = {}) {
-        this.onPreBundleHook.trigger(this, options);
+        this._triggerPreBundleIfNeeded(options);
         // Use data URL to pass code directly to Bun without temporary files
         const dataUrl = `data:text/javascript;base64,${Buffer.from(this.code).toString('base64')}`;
 
@@ -365,6 +379,9 @@ function getSeparator(existingContent) {
      * @returns {CodeFile}
      */
     write(outputPath = null, outputDir = '.') {
+        // Trigger pre-bundle/finalize hook before writing
+        this._triggerPreBundleIfNeeded({});
+
         let relPath;
         let actualOutputDir = outputDir;
 
