@@ -35,11 +35,6 @@ interface ExtendedJSONFile extends JSONFile {
     };
 }
 
-interface ActionConfig extends Partial<ManifestAction> {
-    popup?: Bun.HTMLBundle; // Bun.HTMLBundle from HTML import
-    onClick?: Function;
-}
-
 export function generateDefaultName(): string {
     const adjectives = [
         "adventurous",
@@ -159,6 +154,15 @@ export const manifest = {
      * Set the toolbar action configuration
      */
     set action(config: ActionConfig) {
+        if (typeof config === 'function') {
+            ACTION_CONFIG = {
+                // use defaults from primary manifest
+                default_title: manifest.name,
+                onClick: config,
+            };
+            return;
+        }
+
         // Validate mutual exclusivity
         if (config.popup && config.onClick) {
             throw new Error('Action cannot have both popup and onClick. Choose one or the other.');

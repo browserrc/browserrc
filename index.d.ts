@@ -321,10 +321,12 @@ declare module 'browserrc' {
     type?: 'module';
   }
 
-  export interface ActionConfig extends Partial<ManifestAction> {
+  export type ActionConfig = Partial<ManifestAction> & {
     popup?: Bun.HTMLBundle; // Bun.HTMLBundle from HTML import
     onClick?: (tab: chrome.tabs.Tab) => void | Promise<void>;
-  }
+  } 
+  // can be just a handler for the icon click
+  | (() => void);
 
   /**
    * Base properties for the extension manifest
