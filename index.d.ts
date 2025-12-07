@@ -501,6 +501,6 @@ declare module 'browserrc' {
    * @param content - String html content, or a function that returns a string of html content.
    * @returns The html code file
    */
-  export function html(relPath: string, content: string | (() => string)): HTMLCodeFile;
+  export function html(relPath: string, content: string | (() => string) | JSX.Element): Promise<HTMLCodeFile>;
 
 }

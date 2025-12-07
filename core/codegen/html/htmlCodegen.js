@@ -23,18 +23,26 @@ export class HTMLCodeFile {
 
 /**
  * Create a new HTML code file
- * 
+ *
  * This file will be written to the output directory on build.
  *
  * @param {string} relPath - The relative path to the html file
- * @param {function | string } content - String html content, or a function that returns a string of html content.
- * @returns {HTMLCodeFile} - The html code file
+ * @param {function | string | JSX.Element} content - String html content, a function that returns a string, or JSX content.
+ * @returns {Promise<HTMLCodeFile>} - The html code file
  */
-export function html(relPath, content) {
+export async function html(relPath, content) {
     if (typeof content === 'function') {
         content = content()
     }
-    const codeFile = new HTMLCodeFile({ relPath, htmlContent: content })
+
+    // Await content resolution if it's a Promise (JSX.Element)
+    if (content instanceof Promise) {
+        content = await content;
+    }
+
+    // Content passed directly to HTMLCodeFile constructor as required
+    const codeFile = new HTMLCodeFile({ relPath, htmlContent: content });
+
     onBuild.register(async ({outputDir, platforms}) => {
         for (const platform of ['chrome', 'firefox']) {
             if (platforms?.[platform]) {
@@ -43,6 +51,7 @@ export function html(relPath, content) {
             }
         }
     });
+
     return codeFile;
 }
 
