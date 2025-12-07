@@ -173,20 +173,12 @@ export const manifest = {
         }
 
         ACTION_CONFIG = config;
+        ACTION_CONFIG.default_title = config.default_title || manifest.name;
 
         // Handle onClick by adding to global background script
         if (config.onClick) {
-            const backgroundCode = background.code;
-
-            // Include the user-defined onClick handler function
-            backgroundCode.includeFunction(config.onClick, 'handleActionClick');
-
-            // Add the onClick listener code
-            backgroundCode
-                .addLine('chrome.action.onClicked.addListener(async (tab) => {')
-                .addLine('    // Call user-defined onClick handler')
-                .addLine('    await handleActionClick(tab);')
-                .addLine('});');
+            background.code.includeFunction(config.onClick, 'handleActionClick')
+                .addLine('chrome.action.onClicked.addListener(handleActionClick);')
         }
 
         // Register onBuild hooks
