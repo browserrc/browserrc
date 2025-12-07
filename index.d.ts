@@ -1,3 +1,11 @@
+export type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JSONValue[]
+  | { [key: string]: JSONValue };
+
 declare module 'browserrc' {
   /**
    * The current version of browserrc
@@ -8,7 +16,7 @@ declare module 'browserrc' {
   /**
    * Hook class that manages listeners and triggering
    */
-  export class Hook<Args extends any[] = []> {
+  export class Hook<Args extends readonly unknown[] = []> {
     /** @readonly */
     name?: string;
     /** @readonly */
@@ -16,8 +24,8 @@ declare module 'browserrc' {
 
     constructor(name?: string, description?: string);
 
-    register(listener: (...args: Args) => any, options?: { onError?: (error: unknown) => void }): () => void;
-    trigger(...args: Args): any[];
+    register(listener: (...args: Args) => void, options?: { onError?: (error: unknown) => void }): () => void;
+    trigger(...args: Args): void[];
     clear(): void;
 
     get count(): number;
@@ -48,7 +56,7 @@ declare module 'browserrc' {
     mode?: string;
     currentNode: TrieNode;
     matchedPath: TrieNode[];
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   /**
@@ -287,6 +295,36 @@ declare module 'browserrc' {
   export type ManifestPermission = Permission | HostPermission;
 
   /**
+   * Manifest action configuration (Web Extension Manifest V3)
+   */
+  export interface ManifestAction {
+    default_popup?: string;
+    default_title?: string;
+    default_icon?: string | { [size: number]: string };
+    default_state?: 'enabled' | 'disabled';
+    browser_style?: boolean;
+    default_area?: 'navbar' | 'menupanel' | 'tabstrip' | 'personaltoolbar';
+    theme_icons?: Array<{
+      light: string;
+      dark: string;
+      size: number;
+    }>;
+  }
+
+  /**
+   * Background service worker configuration (Web Extension Manifest V3)
+   */
+  export interface ManifestBackground {
+    service_worker: string;
+    type?: 'module';
+  }
+
+  export interface ActionConfig extends Partial<ManifestAction> {
+    popup?: Bun.HTMLBundle; // Bun.HTMLBundle from HTML import
+    onClick?: (tab: chrome.tabs.Tab) => void | Promise<void>;
+  }
+
+  /**
    * Base properties for the extension manifest
    * These properties are common to all platforms and general to all extensions
    */
@@ -295,6 +333,8 @@ declare module 'browserrc' {
     version?: string;
     description?: string;
     permissions: Permission[];
+    action?: ActionConfig;
+    background?: ManifestBackground;
   };
 
   /**
@@ -335,7 +375,7 @@ declare module 'browserrc' {
    */
   export class CodeFile {
     relPath: string | null;
-    constants: Map<string, any>;
+    constants: Map<string, string>;
     code: string;
     context: object;
 
@@ -350,12 +390,12 @@ declare module 'browserrc' {
     addLines(...lines: string[]): CodeFile;
     addBlock(codeBlock: string): CodeFile;
     includeFileContent(filePath: string): CodeFile;
-    includeConstant(name: string, value: any): CodeFile;
+    includeConstant(name: string, value: JSONValue): CodeFile;
     includeSegment(segment: CodeFile): CodeFile;
     includeIIFE(fn: Function): CodeFile;
     includeFunction(fn: Function, name?: string): CodeFile;
 
-    setContext(keyOrObj: string | object, value?: any): CodeFile;
+    setContext(keyOrObj: string | Record<string, unknown>, value?: unknown): CodeFile;
     getContext(): object;
     clearContext(): CodeFile;
     renderTemplate(additionalContext?: object): CodeFile;
@@ -397,6 +437,16 @@ declare module 'browserrc' {
      * Create a key handling content script
      */
     keyHandling(): CodeFile;
+  };
+
+  /**
+   * Background script utilities for managing the global background service worker
+   */
+  export const background: {
+    /**
+     * Get the global background service worker CodeFile to add custom functionality
+     */
+    readonly code: CodeFile;
   };
 
   /**

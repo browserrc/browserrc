@@ -8,6 +8,7 @@ export { createAction } from './core/rpc.js';
 export { manifest } from './core/buildtime/manifest.ts';
 export { build } from './core/buildtime/index.js';
 export { default as contentScripts } from './core/buildtime/contentScripts.js';
+export { default as background } from './core/buildtime/background.js';
 export { CodeFile, JSONFile } from './core/buildtime/code.js';
 export { onAllPages } from './helpers/index.ts';
 
