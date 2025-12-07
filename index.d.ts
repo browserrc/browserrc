@@ -460,4 +460,7 @@ declare module 'browserrc' {
   };
   
   export function onAllPages(fn: () => void): void;
+  export function code(relPath: string): CodeFile;
+  export function code(relPath: string, content: string): CodeFile;
+  export function code(relPath: string, content: () => void): CodeFile;
 }
