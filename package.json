@@ -5,9 +5,17 @@
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    },
+    "./jsx-runtime": "./jsx-runtime.js"
+  },
   "files": [
     "index.js",
     "index.d.ts",
+    "jsx-runtime.js",
     "core/",
     "LICENSE",
     "README.md"
