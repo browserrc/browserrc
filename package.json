@@ -36,6 +36,7 @@
   "homepage": "https://github.com/browserrc/browserrc",
   "packageManager": "bun@1.0.0",
   "dependencies": {
+    "@kitajs/html": "^4.2.11",
     "handlebars": "^4.7.8"
   },
   "engines": {

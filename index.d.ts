@@ -464,4 +464,42 @@ declare module 'browserrc' {
   export function code(relPath: string): CodeFile;
   export function code(relPath: string, content: string): CodeFile;
   export function code(relPath: string, content: () => void): CodeFile;
+
+  // ============================================================================
+  // HTML Code Generation Types
+  // ============================================================================
+
+  /**
+   * A container for HTML code files that will be written to the output directory on build
+   */
+  export class HTMLCodeFile {
+    /**
+     * The HTML content of the file
+     */
+    html: string;
+
+    /**
+     * The relative path to the HTML file
+     */
+    relPath: string;
+
+    constructor(options: { relPath: string; htmlContent: string });
+
+    /**
+     * Write the HTML file to the specified output directory
+     * @param outputDir - The output directory (defaults to '.')
+     */
+    write(outputDir?: string): void;
+  }
+
+  /**
+   * Create a new HTML code file
+   *
+   * This file will be written to the output directory on build.
+   *
+   * @param relPath - The relative path to the html file
+   * @param content - String html content, or a function that returns a string of html content.
+   * @returns The html code file
+   */
+  export function html(relPath: string, content: string | (() => string)): HTMLCodeFile;
 }

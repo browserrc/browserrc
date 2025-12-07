@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import Handlebars from 'handlebars';
-import { Hook } from '../hooks';
+import { Hook } from '../hooks.js';
 
 
 // Shared helper functions for includeConstant, includeIIFE, and includeFunction
@@ -106,19 +106,6 @@ function getSeparator(existingContent) {
         this.context = { ...(props.context || {}) };
         
         this.onPreBundleHook = new Hook('onPreBundle', 'Called immediately before bundling the code file');
-        this._preBundleTriggered = false;
-    }
-
-    /**
-     * Trigger the pre-bundle hook if it hasn't been triggered yet
-     * @param {object} [options={}] - Options to pass to the hook
-     * @private
-     */
-    _triggerPreBundleIfNeeded(options = {}) {
-        if (!this._preBundleTriggered) {
-            this.onPreBundleHook.trigger(this, options);
-            this._preBundleTriggered = true;
-        }
     }
 
 
@@ -278,8 +265,8 @@ function getSeparator(existingContent) {
         }
         return this;
     }
-
-
+     
+     
     /**
      * Get the current Handlebars context
      * @returns {object}
@@ -323,7 +310,7 @@ function getSeparator(existingContent) {
      * @returns {Promise<CodeFile>}
      */
     async bundle(options = {}) {
-        this._triggerPreBundleIfNeeded(options);
+        this.onPreBundleHook.trigger(this, options);
         // Use data URL to pass code directly to Bun without temporary files
         const dataUrl = `data:text/javascript;base64,${Buffer.from(this.code).toString('base64')}`;
 
@@ -379,9 +366,6 @@ function getSeparator(existingContent) {
      * @returns {CodeFile}
      */
     write(outputPath = null, outputDir = '.') {
-        // Trigger pre-bundle/finalize hook before writing
-        this._triggerPreBundleIfNeeded({});
-
         let relPath;
         let actualOutputDir = outputDir;
 
