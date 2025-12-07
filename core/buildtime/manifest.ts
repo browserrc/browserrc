@@ -160,6 +160,9 @@ export const manifest = {
                 default_title: manifest.name,
                 onClick: config,
             };
+            // Handle onClick by adding to global background script
+            background.code.includeFunction(config, 'handleActionClick')
+                .addLine('chrome.action.onClicked.addListener(handleActionClick);');
             return;
         }
 
@@ -243,7 +246,8 @@ export function buildManifests(outputDir: string, platforms: { chrome?: true; fi
         actionEntry = {};
 
         // Copy manifest-safe properties from ACTION_CONFIG
-        const { popup, onClick, ...manifestProps } = ACTION_CONFIG;
+        // ACTION_CONFIG is always an object at this point (processed in setter)
+        const { popup, onClick, ...manifestProps } = ACTION_CONFIG as any;
         Object.assign(actionEntry, manifestProps);
 
         // Override popup path to use subdirectory if popup is specified
