@@ -22,7 +22,7 @@ interface ContentScriptOptions {
     js: string[];
 }
 
-interface ExtendedJSONFile extends JSONFile {
+export interface ExtendedJSONFile extends JSONFile {
     content_scripts: ContentScriptEntry[];
     permissions?: ManifestPermission[];
     manifest_version?: number;
@@ -31,7 +31,9 @@ interface ExtendedJSONFile extends JSONFile {
     description?: string;
     action?: ManifestAction;
     background?: {
-        service_worker: string;
+        service_worker?: string;
+        scripts?: string[];
+        page?: string;
     };
 }
 
@@ -276,7 +278,7 @@ export function buildManifests(outputDir: string, platforms: { chrome?: true; fi
             name: manifest.name,
             description: manifest.description,
             ...(permissions.length > 0 && { permissions }),
-            ...(BACKGROUND_CODE_FILE && { background: { service_worker: 'background.js' } }),
+            ...(BACKGROUND_CODE_FILE && { background: { scripts: ['background.js'] } }),
             ...(actionEntry && Object.keys(actionEntry).length > 0 && { action: actionEntry }),
         });
         MANIFESTS.firefox.write(outputDir);
