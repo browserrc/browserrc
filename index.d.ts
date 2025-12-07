@@ -1,3 +1,5 @@
+import { ExtendedJSONFile } from "./core/buildtime/manifest";
+
 export type JSONValue =
   | string
   | number
@@ -335,6 +337,7 @@ declare module 'browserrc' {
     permissions: Permission[];
     action?: ActionConfig;
     background?: ManifestBackground;
+    readonly assign: (config: Partial<ExtendedJSONFile>) => void;
   };
 
   /**
