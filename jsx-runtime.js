@@ -5,4 +5,5 @@
  * Re-exports from @kitajs/html for compatibility.
  */
 
-export { jsx, jsxs, Fragment, jsxDEV } from '@kitajs/html/jsx-dev-runtime';
+export { jsx, jsxs, Fragment } from '@kitajs/html/jsx-runtime';
+export { jsxDEV } from '@kitajs/html/jsx-dev-runtime';

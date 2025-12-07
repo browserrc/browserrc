@@ -502,4 +502,5 @@ declare module 'browserrc' {
    * @returns The html code file
    */
   export function html(relPath: string, content: string | (() => string)): HTMLCodeFile;
+
 }

@@ -10,12 +10,16 @@
       "types": "./index.d.ts",
       "import": "./index.js"
     },
-    "./jsx-runtime": "./jsx-runtime.js"
+    "./jsx-runtime": {
+      "types": "./jsx-runtime.d.ts",
+      "import": "./jsx-runtime.js"
+    }
   },
   "files": [
     "index.js",
     "index.d.ts",
     "jsx-runtime.js",
+    "jsx-runtime.d.ts",
     "core/",
     "LICENSE",
     "README.md"
