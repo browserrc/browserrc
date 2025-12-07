@@ -105,7 +105,7 @@ function getSeparator(existingContent) {
         /** @type {object} */
         this.context = { ...(props.context || {}) };
         
-        this.onPreBundle = new Hook('onPreBundle', 'Called immediately before bundling the code file');
+        this.onPreBundleHook = new Hook('onPreBundle', 'Called immediately before bundling the code file');
     }
 
 
@@ -309,7 +309,7 @@ function getSeparator(existingContent) {
      * @returns {Promise<CodeFile>}
      */
     async bundle(options = {}) {
-        this.onPreBundle.trigger(this, options);
+        this.onPreBundleHook.trigger(this, options);
         // Use data URL to pass code directly to Bun without temporary files
         const dataUrl = `data:text/javascript;base64,${Buffer.from(this.code).toString('base64')}`;
 
