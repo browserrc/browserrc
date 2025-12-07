@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import Handlebars from 'handlebars';
+import { Hook } from '../hooks';
 
 
 // Shared helper functions for includeConstant, includeIIFE, and includeFunction
@@ -103,9 +104,9 @@ function getSeparator(existingContent) {
         this.code = props.code || '';
         /** @type {object} */
         this.context = { ...(props.context || {}) };
+        
+        this.onPreBundle = new Hook('onPreBundle', 'Called immediately before bundling the code file');
     }
-
-
 
 
     /**
@@ -230,6 +231,40 @@ function getSeparator(existingContent) {
         }
         return this;
     }
+     
+    onPreBundle(fn) {
+        this.onPreBundle.register(fn);
+        return this;
+    }
+     
+    /**
+     * Apply a function to the CodeFile
+     * @param {(CodeFile) => void} fn - The function to apply
+     * @returns {CodeFile}
+     */
+    apply(fn) {
+        fn(this);
+        return this;
+    }
+     
+    references(symbol) {
+        if (typeof symbol === 'string') {
+            // This should be way more sophisticated, but for now it's a simple check for the symbol in the code
+            return this.code.includes(symbol)
+        }
+        else if (symbol instanceof Function) {
+            // Check by name
+            return this.code.includes(symbol.name)
+        }
+    }
+     
+    includeFunctionIfReferenced(symbol) {
+        if (this.references(symbol)) {
+            this.includeFunction(symbol);
+        }
+        return this;
+    }
+
 
     /**
      * Get the current Handlebars context
@@ -274,6 +309,7 @@ function getSeparator(existingContent) {
      * @returns {Promise<CodeFile>}
      */
     async bundle(options = {}) {
+        this.onPreBundle.trigger(this, options);
         // Use data URL to pass code directly to Bun without temporary files
         const dataUrl = `data:text/javascript;base64,${Buffer.from(this.code).toString('base64')}`;
 

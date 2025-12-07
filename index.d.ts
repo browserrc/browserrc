@@ -397,6 +397,7 @@ declare module 'browserrc' {
 
     setContext(keyOrObj: string | Record<string, unknown>, value?: unknown): CodeFile;
     getContext(): object;
+    apply(fn: (codeFile: CodeFile) => void): CodeFile;
     clearContext(): CodeFile;
     renderTemplate(additionalContext?: object): CodeFile;
     bundle(options?: object): Promise<CodeFile>;
