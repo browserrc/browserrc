@@ -233,7 +233,7 @@ function getSeparator(existingContent) {
     }
      
     onPreBundle(fn) {
-        this.onPreBundle.register(fn);
+        this.onPreBundleHook.register(fn);
         return this;
     }
      
