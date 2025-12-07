@@ -196,6 +196,9 @@ export const manifest = {
             });
         }
     },
+    assign: (config: Partial<ExtendedJSONFile>) => {
+        Object.assign(manifest, config);
+    },
 };
 
 
