@@ -54,11 +54,3 @@ export async function html(relPath, content) {
 
     return codeFile;
 }
-
-/**
- * Re-export @kitajs/html functions so that browserrc can be used
- * as a jsxImportSource
- *
- * May replace with a custom implementation in the future
- */
-export { jsx, jsxs, Fragment, jsxDEV } from '@kitajs/html/jsx-dev-runtime'

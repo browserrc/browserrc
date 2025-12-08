@@ -1,8 +1,9 @@
 // Entrypoint for browserrc build plugin
 
 import { Hook } from "../hooks.js";
+import { bundleJsFiles } from "../treeshake/js.buntime.js";
 import { buildManifests } from "./manifest.ts";
-import nodePath from 'path';
+import { join } from 'path';
 
 /**
  * @type BuildPlatform = 'chrome' | 'firefox'
@@ -20,19 +21,28 @@ export const onBuild = new Hook('onBuild', 'Called when the browserrc plugin is 
  * @returns {Promise<void>}
  */
 export async function build(options) {
-    const { platforms, rcpath, outputDir } = options;
-
-    // Run the user's rc file
-    // Some extensions might call build() directly in their own code, in which case they won't have a
-    // separate rc file. In that case, their code will just run before this already.
-    if (rcpath) {
-        const resolvedPath = nodePath.isAbsolute(rcpath) ? rcpath : nodePath.resolve(process.cwd(), rcpath);
-        const userModule = await import(`file://${resolvedPath}`);
-        console.debug('User module: ', userModule);
-        // Not doing anything with it yet, but we have access to the default exports 
-        // This could be used for some features.
+    let { platforms, outputDir, entrypoint } = options;
+    
+    // if no target file provided, use the currently running one
+    if (!entrypoint) {
+        entrypoint = process.argv[1]
     }
 
     await onBuild.trigger(options);
     buildManifests(outputDir, platforms);
+    
+    if (platforms.chrome) {
+        await bundleJsFiles({
+            outputDir: join(outputDir, 'chrome'),
+            platform: 'chrome',
+            entrypoint
+        })
+    }
+    if (platforms.firefox) {
+        await bundleJsFiles({
+            outputDir: join(outputDir, 'firefox'),
+            platform: 'firefox',
+            entrypoint
+        })
+    }
 }

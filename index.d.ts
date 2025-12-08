@@ -507,5 +507,6 @@ declare module 'browserrc' {
    * @returns The html code file
    */
   export function html(relPath: string, content: string | (() => string | JSX.Element) | JSX.Element): Promise<HTMLCodeFile>;
-
+  
+  export function js(path: string, fn: () => void): void;
 }
