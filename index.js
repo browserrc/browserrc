@@ -10,7 +10,7 @@ export { build } from './core/buildtime/index.js';
 export { default as contentScripts } from './core/buildtime/contentScripts.js';
 export { default as background } from './core/buildtime/background.js';
 export { CodeFile, JSONFile } from './core/buildtime/code.js';
-export { onAllPages, code } from './helpers/index.ts';
+export { onAllPages } from './helpers/index.ts';
 export { HTMLCodeFile, html } from './core/codegen/html/htmlCodegen.js';
 export { jsx, jsxs, Fragment, jsxDEV } from './jsx-runtime.js';
 export { js } from './core/treeshake/js.buntime.js';
