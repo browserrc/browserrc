@@ -2,6 +2,7 @@
 
 import { Hook } from "../hooks.js";
 import { bundleJsFiles } from "../treeshake/js.buntime.js";
+import { bundleContentScripts } from "../treeshake/contentScript.buntime.js";
 import { buildManifests } from "./manifest.ts";
 import { join } from 'path';
 
@@ -37,9 +38,19 @@ export async function build(options) {
             platform: 'chrome',
             entrypoint
         })
+        await bundleContentScripts({
+            outputDir: join(outputDir, 'chrome'),
+            platform: 'chrome',
+            entrypoint
+        })
     }
     if (platforms.firefox) {
         await bundleJsFiles({
+            outputDir: join(outputDir, 'firefox'),
+            platform: 'firefox',
+            entrypoint
+        })
+        await bundleContentScripts({
             outputDir: join(outputDir, 'firefox'),
             platform: 'firefox',
             entrypoint

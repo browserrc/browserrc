@@ -8,12 +8,13 @@ export { createAction } from './core/rpc.js';
 export { manifest } from './core/buildtime/manifest.ts';
 export { build } from './core/buildtime/index.js';
 export { default as contentScripts } from './core/buildtime/contentScripts.js';
-export { default as background } from './core/buildtime/background.js';
+export { default as background } from './core/buildtime/background.ts';
 export { CodeFile, JSONFile } from './core/buildtime/code.js';
 export { onAllPages, code } from './helpers/index.ts';
 export { HTMLCodeFile, html } from './core/codegen/html/htmlCodegen.js';
 export { jsx, jsxs, Fragment, jsxDEV } from './jsx-runtime.js';
 export { js } from './core/treeshake/js.buntime.js';
+export { contentScript } from './core/treeshake/contentScript.buntime.js';
 export const hello = () => 'Hello from browserrc!';
 export const version = '1.0.0';
 
