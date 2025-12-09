@@ -1,18 +1,16 @@
-import { CodeFile } from "../core/buildtime/code";
-import contentScripts from "../core/buildtime/contentScripts.js";
+import { contentScript } from "../core/treeshake/contentScript.buntime.js";
 
 
-let ALL_PAGES_CONTENT_SCRIPT: CodeFile | null = null;
-
-
-function getAllPagesContentScript() {
-    if (ALL_PAGES_CONTENT_SCRIPT === null) {
-        ALL_PAGES_CONTENT_SCRIPT = contentScripts.dynamic('content/allPages.js');
-    }
-    return ALL_PAGES_CONTENT_SCRIPT;
-}
-
-
+/**
+ * Register code to run on all pages as a content script
+ * Uses the self-bundling approach for tree-shaking
+ * 
+ * @param fn - The function to run on all pages
+ */
 export function onAllPages(fn: () => void) {
-    getAllPagesContentScript().includeIIFE(fn);
+    contentScript('content/allPages.js', {
+        matches: ['<all_urls>'],
+        run_at: 'document_idle',
+        all_frames: false,
+    }, fn);
 }

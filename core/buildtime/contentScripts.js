@@ -1,11 +1,12 @@
-import path from "path";
 import { addContentScript } from "./manifest.ts";
-import { CodeFile } from "./code.js";
-import { hooks } from "../../index.js";
+import { contentScript } from "../treeshake/contentScript.buntime.js";
 
+// Re-export the self-bundling contentScript function
+export { contentScript };
 
 /**
- * Create a file builder and register the built script in the manifest
+ * Register a static content script (just adds to manifest, no code bundling)
+ * Use this when you have a pre-built content script file
  *
  * @param {string} relPath - The relative path to the content script file
  * @param {Partial<{
@@ -14,32 +15,7 @@ import { hooks } from "../../index.js";
  *   all_frames: boolean,
  *   platforms: import("browserrc").BuildPlatforms
  * }>} [options] - The options for the content script
- * @returns {CodeFile} The javascript file builder
  */
-function dynamicContentScript(relPath, options = {}) {
-    const javascriptFile = new CodeFile({ relPath });
-
-    // ensure manifest contains the declaration
-    staticContentScript(javascriptFile.relPath, options);
-    
-    // ensure that the file gets written on build
-    hooks.onBuild.register(async ({ outputDir, platforms }) => {
-        const targetPlatforms = options.platforms || { chrome: true, firefox: true };
-        
-        // Write the content script to each platform-specific directory
-        for (const platform of ['chrome', 'firefox']) {
-            if (platforms?.[platform] && targetPlatforms[platform]) {
-                const platformOutputDir = path.join(outputDir, platform);
-                console.debug(`[onBuild] writing content script to ${platform}:`, javascriptFile.relPath);
-                javascriptFile.write(platformOutputDir);
-            }
-        }
-    })
-
-    return javascriptFile
-}
-
-
 function staticContentScript(relPath, options = {}) {
     addContentScript(Object.assign({
         matches: ['<all_urls>'],
@@ -51,14 +27,24 @@ function staticContentScript(relPath, options = {}) {
 }
 
 
-function keyHandling() {
-    return new CodeFile({ relPath: 'content/keyHandling.js' })
-        .includeFileContent(path.join(__dirname, '..', '..', 'resources', 'segments', 'content', 'inputProcessing.hbs'))
-}
-
-
 export default {
-    dynamic: dynamicContentScript,
+    /**
+     * Create a content script using self-bundling
+     * The function will be bundled and tree-shaken for each target
+     * 
+     * @example
+     * contentScripts.dynamic('content/myScript.js', () => {
+     *     console.log('Hello from content script!');
+     * });
+     * 
+     * @example
+     * contentScripts.dynamic('content/myScript.js', {
+     *     matches: ['https://*.example.com/*'],
+     *     run_at: 'document_start',
+     * }, () => {
+     *     console.log('Hello from content script!');
+     * });
+     */
+    dynamic: contentScript,
     static: staticContentScript,
-    keyHandling: keyHandling,
 }

@@ -9,11 +9,19 @@ export const conditionalCompiler = (target) => ({
         build.onLoad({ filter: /\.(ts|js|tsx)$/ }, async (args) => {
             const text = await file(args.path).text();
 
+            // Match js('path', ...) calls
             const jsRegex = /(?<!\.)\bjs\s*\(\s*(['"`])(.*?)\1/g;
+            // Match contentScript('path', ...) calls
+            const contentScriptRegex = /(?<!\.)\bcontentScript\s*\(\s*(['"`])(.*?)\1/g;
+            // Match build() calls (to remove them)
             const buildRegex = /(?<!function\s|export\s+function\s)\bbuild\s*\(/g;
 
             let contents = text.replaceAll(jsRegex, (match, quote, scriptName) => {
                 return `if ("${scriptName}" === ${JSON.stringify(target)}) js(${quote}${scriptName}${quote}`;
+            });
+
+            contents = contents.replaceAll(contentScriptRegex, (match, quote, scriptName) => {
+                return `if ("${scriptName}" === ${JSON.stringify(target)}) contentScript(${quote}${scriptName}${quote}`;
             });
 
             contents = contents.replaceAll(buildRegex, (match) => {
