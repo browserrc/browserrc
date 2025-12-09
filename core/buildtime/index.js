@@ -35,14 +35,20 @@ export async function build(options) {
         await bundleJsFiles({
             outputDir: join(outputDir, 'chrome'),
             platform: 'chrome',
-            entrypoint
+            entrypoint,
+            buildOptions: {
+                minify: options.dev?.minify || false,
+            }
         })
     }
     if (platforms.firefox) {
         await bundleJsFiles({
             outputDir: join(outputDir, 'firefox'),
             platform: 'firefox',
-            entrypoint
+            entrypoint,
+            buildOptions: {
+                minify: options.dev?.minify || false,
+            }
         })
     }
 }

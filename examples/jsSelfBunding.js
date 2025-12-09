@@ -15,7 +15,7 @@ js('test3.js', () => {
 })
 
 build({
-    outputDir: 'test',
+    outputDir: 'examples/jsSelfBundling/dist',
     platforms: {
         chrome: true,
         firefox: true,

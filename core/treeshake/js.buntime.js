@@ -15,9 +15,9 @@ export function js(path, fn) {
     // See js.target.js for where it actually runs.
 }
 
-export async function bundleJsFiles({ outputDir, platform, entrypoint }) {
+export async function bundleJsFiles({ outputDir, platform, entrypoint, buildOptions }) {
     for (const target of JS_PATHS) {
-        const bundledCode = await bundleWithTarget(entrypoint, { target, platform })
+        const bundledCode = await bundleWithTarget(entrypoint, { target, platform, buildOptions })
         file(join(outputDir, target.replace('.js', '.bundled.js'))).write(bundledCode)
     }
 }

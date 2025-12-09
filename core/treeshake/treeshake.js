@@ -45,7 +45,7 @@ const browserShimsPlugin = {
  * @returns {string} the bundled code
  */
 export async function bundleWithTarget(entrypoint, config) {
-    const result = await Bun.build({
+    const result = await Bun.build(Object.assign({
         entrypoints: [resolve(entrypoint)],
         target: "browser",
         write: false,
@@ -60,7 +60,22 @@ export async function bundleWithTarget(entrypoint, config) {
             // uses browser runtime versions of browserrc imports
             browserShimsPlugin,
         ],
-        ...(config.buildOptions || {}),
-    })
+        
+    }, config.buildOptions || {}))
     return result.outputs[0].text()
+}
+
+export function isBuntime() {
+    // __TARGET__ will throw a ReferenceError if it wasn't passed to "define" in bundling
+    try {
+        // Will also consider undefined to mean we are running at build time
+        return __TARGET__ === undefined
+    } catch (error) {
+        return true
+    }
+}
+
+export function isBeingBundled() {
+    // __TARGET__ will have the file name if it is being bundled
+    return __TARGET__ !== undefined
 }

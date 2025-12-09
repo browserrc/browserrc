@@ -358,6 +358,9 @@ declare module 'browserrc' {
     platforms: BuildPlatforms;
     rcpath?: string;
     outputDir: string;
+    dev?: {
+      minify?: boolean;
+    }
   }
 
   /**
@@ -443,6 +446,8 @@ declare module 'browserrc' {
      * Create a key handling content script
      */
     keyHandling(): CodeFile;
+    
+    create: (relPath: string, fn: () => void, options?: ContentScriptOptions) => void;
   };
 
   /**
