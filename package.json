@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "description": "A framework for creating browser extensions using a single JavaScript file",
   "type": "module",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "index.ts",
+  "types": "index.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./index.js"
+      "types": "./index.ts",
+      "import": "./index.ts"
     },
     "./jsx-runtime": {
       "types": "./jsx-runtime.d.ts",
@@ -20,8 +20,7 @@
     }
   },
   "files": [
-    "index.js",
-    "index.d.ts",
+    "index.ts",
     "jsx-runtime.js",
     "jsx-runtime.d.ts",
     "core/",
@@ -30,7 +29,7 @@
   ],
   "scripts": {
     "test": "bun run node --test core/keyProcessor.test.js core/buildtime/code.test.js",
-    "build": "bun -e \"console.log('✓ Package valid'); import('./index.js').then(() => console.log('✓ Module builds successfully')).catch(err => { console.error('✗ Module build failed:', err.message); process.exit(1); });\""
+    "build": "bun -e \"console.log('✓ Package valid'); import('./index.ts').then(() => console.log('✓ Module builds successfully')).catch(err => { console.error('✗ Module build failed:', err.message); process.exit(1); });\""
   },
   "keywords": [
     "browser-extension",
