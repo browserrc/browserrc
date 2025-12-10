@@ -1,7 +1,8 @@
 // Entrypoint for browserrc build plugin
 
 import { Hook } from "../hooks.js";
-import { bundleJsFiles } from "../treeshake/js.buntime.js";
+import { bundleFiles } from "../treeshake/js.buntime.js";
+import { usesBackground } from "./background.ts";
 import { buildManifests } from "./manifest.ts";
 import { join } from 'path';
 
@@ -32,7 +33,7 @@ export async function build(options) {
     buildManifests(outputDir, platforms);
     
     if (platforms.chrome) {
-        await bundleJsFiles({
+        await bundleFiles({
             outputDir: join(outputDir, 'chrome'),
             platform: 'chrome',
             entrypoint,
@@ -42,7 +43,7 @@ export async function build(options) {
         })
     }
     if (platforms.firefox) {
-        await bundleJsFiles({
+        await bundleFiles({
             outputDir: join(outputDir, 'firefox'),
             platform: 'firefox',
             entrypoint,

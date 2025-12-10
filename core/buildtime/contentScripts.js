@@ -2,8 +2,9 @@ import path from "path";
 import { addContentScript } from "./manifest.ts";
 import { CodeFile } from "./code.js";
 import { hooks } from "../../index.js";
-import { js } from "../treeshake/js.buntime.js";
+import { js, registerBundle } from "../treeshake/js.buntime.js";
 import { bundledName } from "../util.js";
+
 
 
 /**
@@ -69,10 +70,35 @@ function createContentScript(relpath, fn, options = {}) {
     }, options));
 }
 
+export function content(relpath, fn, options = {}) {
+    js(relpath, fn);
+    addContentScript(Object.assign({
+        matches: ['<all_urls>'],
+        js: [bundledName(relpath)],
+        run_at: 'document_idle',
+        all_frames: false,
+        platforms: { chrome: true, firefox: true },
+    }, options));
+}
+
+export function isContentScript(target, options = {}) {
+    // Register content script
+    addContentScript(Object.assign({
+        matches: ['<all_urls>'],
+        js: [bundledName(target)],
+        run_at: 'document_idle',
+        all_frames: false,
+        platforms: { chrome: true, firefox: true },
+    }, options));
+    // Register for unified bundling
+    registerBundle(target, 'content-script', options);
+    return false;
+}
 
 export default {
     dynamic: dynamicContentScript,
     static: staticContentScript,
-    create: createContentScript,
+    create: content,
+    isContentScript: isContentScript,
     keyHandling: keyHandling,
 }

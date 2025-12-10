@@ -1,6 +1,39 @@
 import { resolve, extname } from 'path';
 import { file } from 'bun';
 
+/**
+ * Replace known conditional function calls with compile-time boolean literals
+ * to optimize bundle size by enabling dead code elimination.
+ *
+ * This transforms runtime conditionals like `isBackground()` and `isContentScript('target')`
+ * into compile-time boolean literals, allowing the bundler to eliminate unused code paths.
+ *
+ * @param {string} contents - The source code to transform
+ * @param {string} target - The bundle target (e.g., 'background.js', 'content.js')
+ * @returns {string} The transformed source code with optimized conditionals
+ */
+function replaceKnownConditionals(contents, target) {
+    const conditionReplacements = [
+        {
+            regex: /(?<!\.)\bisBackground\s*\(\s*\)/g,
+            getCompareValue: () => 'background.js'
+        },
+        {
+            regex: /(?<!\.)\bisContentScript\s*\(\s*['"`]([^'"`]+)['"`](?:\s*,\s*[^)]*)?\s*\)/g,
+            getCompareValue: (match, targetParam) => targetParam
+        }
+    ];
+
+    for (const { regex, getCompareValue } of conditionReplacements) {
+        contents = contents.replaceAll(regex, (...args) => {
+            const compareValue = getCompareValue(...args);
+            return target === compareValue ? 'true' : 'false';
+        });
+    }
+
+    return contents;
+}
+
 // make top-level calls conditional on the target
 // this way they are removed during tree-shaking
 export const conditionalCompiler = (target) => ({
@@ -9,16 +42,23 @@ export const conditionalCompiler = (target) => ({
         build.onLoad({ filter: /\.(ts|js|tsx)$/ }, async (args) => {
             const text = await file(args.path).text();
 
+            // Regex patterns for conditional compilation during bundling
             const jsRegex = /(?<!\.)\bjs\s*\(\s*(['"`])(.*?)\1/g;
-            const buildRegex = /(?<!function\s|export\s+function\s)\bbuild\s*\(/g;
+            const buildRegex = /(?<!function\s|export\s+function\s|Bun\.)\bbuild\s*\(/g;
 
+            // Replace js() calls with conditional execution based on target
+            // This ensures content scripts only execute when bundling for their specific target
             let contents = text.replaceAll(jsRegex, (match, quote, scriptName) => {
                 return `if ("${scriptName}" === ${JSON.stringify(target)}) js(${quote}${scriptName}${quote}`;
             });
 
+            // Replace build() calls with false condition to eliminate build-time code from bundles
             contents = contents.replaceAll(buildRegex, (match) => {
                 return `if (false) build(`;
             });
+
+            // Apply known conditional replacements to optimize bundle size
+            contents = replaceKnownConditionals(contents, target);
 
             return {
                 contents,
@@ -65,17 +105,4 @@ export async function bundleWithTarget(entrypoint, config) {
     return result.outputs[0].text()
 }
 
-export function isBuntime() {
-    // __TARGET__ will throw a ReferenceError if it wasn't passed to "define" in bundling
-    try {
-        // Will also consider undefined to mean we are running at build time
-        return __TARGET__ === undefined
-    } catch (error) {
-        return true
-    }
-}
-
-export function isBeingBundled() {
-    // __TARGET__ will have the file name if it is being bundled
-    return __TARGET__ !== undefined
-}
+export { isBuntime, isBeingBundled, isBeingBundledFor } from './runtime.js';

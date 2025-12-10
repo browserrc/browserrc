@@ -5,19 +5,37 @@ import { file } from 'bun'
 import { join } from 'path'
 import { bundleWithTarget } from './treeshake'
 
-const JS_PATHS = []
-
+// Unified registry for all files that need bundling
+export const filesToBundle = []
 
 export function js(path, fn) {
-    JS_PATHS.push(path)    
-    // Note: we don't actually need to do anything with the function on the 
-    // intitial build pass. We only need to run the function after bundling.
+    filesToBundle.push({
+        target: path,
+        type: 'js',
+        outputName: path.replace('.js', '.bundled.js')
+    })
+    // Note: we don't actually need to do anything with the function on the
+    // initial build pass. We only need to run the function after bundling.
     // See js.target.js for where it actually runs.
 }
 
-export async function bundleJsFiles({ outputDir, platform, entrypoint, buildOptions }) {
-    for (const target of JS_PATHS) {
-        const bundledCode = await bundleWithTarget(entrypoint, { target, platform, buildOptions })
-        file(join(outputDir, target.replace('.js', '.bundled.js'))).write(bundledCode)
+export function registerBundle(target, type, options = {}) {
+    const outputName = target.replace('.js', type === 'content-script' ? '.bundled.js' : '.js')
+    filesToBundle.push({
+        target,
+        type,
+        outputName,
+        options
+    })
+}
+
+export async function bundleFiles({ outputDir, platform, entrypoint, buildOptions }) {
+    for (const bundleFile of filesToBundle) {
+        const bundledCode = await bundleWithTarget(entrypoint, {
+            target: bundleFile.target,
+            platform,
+            buildOptions
+        })
+        file(join(outputDir, bundleFile.outputName)).write(bundledCode)
     }
 }
