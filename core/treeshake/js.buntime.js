@@ -19,11 +19,11 @@ export function js(path, fn) {
     // See js.target.js for where it actually runs.
 }
 
-export function registerBundle(target, type, options = {}) {
-    const outputName = target.replace('.js', type === 'content-script' ? '.bundled.js' : '.js')
+export function registerBundle(target, environment, options = {}) {
+    const outputName = target.replace('.js', environment === 'content' ? '.bundled.js' : '.js')
     filesToBundle.push({
         target,
-        type,
+        environment,
         outputName,
         options
     })
@@ -34,6 +34,7 @@ export async function bundleFiles({ outputDir, platform, entrypoint, buildOption
         const bundledCode = await bundleWithTarget(entrypoint, {
             target: bundleFile.target,
             platform,
+            environment: bundleFile.environment || 'bun',
             buildOptions
         })
         file(join(outputDir, bundleFile.outputName)).write(bundledCode)

@@ -1,8 +1,4 @@
 export { js } from './js.target.js';
-import { isBeingBundledFor } from "../treeshake/runtime.js";
-
-
-const BACKGROUND_FILE_NAME = "background.js";
 
 
 export const contentScripts = {
@@ -11,13 +7,17 @@ export const contentScripts = {
     }
 }
 
-
 // bundle time background functions
-export const background = (fn) => fn();
-export const isBackground = () => isBeingBundledFor(BACKGROUND_FILE_NAME);
+export const background = (fn) => { if (__ENVIRONMENT__ === "background") fn(); }
+export const isBackground = () => __ENVIRONMENT__ === "background";
+export const isChrome = () => __PLATFORM__ === "chrome";
+export const isFirefox = () => __PLATFORM__ === "firefox";
 
 // bundle time content script functions
 export const createContentScript = (relpath, fn) => {
+    if (__TARGET__ === relpath) fn();
+};
+export const content = (relpath, fn) => {
     if (__TARGET__ === relpath) fn();
 };
 export const isContentScript = (target, options) => {

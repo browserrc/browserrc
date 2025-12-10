@@ -2,7 +2,7 @@ import { JSONFile } from "./code.js";
 import type { ActionConfig, BuildOptions } from "../../index.js";
 import type { Permission, ManifestPermission, ManifestAction } from "../../index.js";
 import { onBuild } from "./index.js";
-import background, { BACKGROUND_CODE_FILE } from "./background.js";
+import background, { BACKGROUND_CODE_FILE, usesBackground } from "./background.js";
 import path from "path";
 import fs from "fs";
 
@@ -242,6 +242,11 @@ export function addContentScript(options: ContentScriptOptions): void {
 export function buildManifests(outputDir: string, platforms: { chrome?: true; firefox?: true }): void {
     const permissions = Array.from(PERMISSIONS);
 
+    // If background is used but code file doesn't exist yet, create it
+    if (usesBackground && !BACKGROUND_CODE_FILE) {
+        background.code; // This triggers the creation of BACKGROUND_CODE_FILE
+    }
+
     // Build action manifest entry
     let actionEntry: Partial<ManifestAction> | undefined;
     if (ACTION_CONFIG) {
@@ -265,7 +270,7 @@ export function buildManifests(outputDir: string, platforms: { chrome?: true; fi
             name: manifest.name,
             description: manifest.description,
             ...(permissions.length > 0 && { permissions }),
-            ...(BACKGROUND_CODE_FILE && { background: { service_worker: 'background.js' } }),
+            ...((BACKGROUND_CODE_FILE || usesBackground) && { background: { service_worker: 'background.js' } }),
             ...(actionEntry && Object.keys(actionEntry).length > 0 && { action: actionEntry }),
         });
         MANIFESTS.chrome.write(outputDir);
@@ -278,7 +283,7 @@ export function buildManifests(outputDir: string, platforms: { chrome?: true; fi
             name: manifest.name,
             description: manifest.description,
             ...(permissions.length > 0 && { permissions }),
-            ...(BACKGROUND_CODE_FILE && { background: { scripts: ['background.js'] } }),
+            ...((BACKGROUND_CODE_FILE || usesBackground) && { background: { scripts: ['background.js'] } }),
             ...(actionEntry && Object.keys(actionEntry).length > 0 && { action: actionEntry }),
         });
         MANIFESTS.firefox.write(outputDir);

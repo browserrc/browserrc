@@ -1,42 +1,10 @@
 import { resolve, extname } from 'path';
 import { file } from 'bun';
 
-/**
- * Replace known conditional function calls with compile-time boolean literals
- * to optimize bundle size by enabling dead code elimination.
- *
- * This transforms runtime conditionals like `isBackground()` and `isContentScript('target')`
- * into compile-time boolean literals, allowing the bundler to eliminate unused code paths.
- *
- * @param {string} contents - The source code to transform
- * @param {string} target - The bundle target (e.g., 'background.js', 'content.js')
- * @returns {string} The transformed source code with optimized conditionals
- */
-function replaceKnownConditionals(contents, target) {
-    const conditionReplacements = [
-        {
-            regex: /(?<!\.)\bisBackground\s*\(\s*\)/g,
-            getCompareValue: () => 'background.js'
-        },
-        {
-            regex: /(?<!\.)\bisContentScript\s*\(\s*['"`]([^'"`]+)['"`](?:\s*,\s*[^)]*)?\s*\)/g,
-            getCompareValue: (match, targetParam) => targetParam
-        }
-    ];
-
-    for (const { regex, getCompareValue } of conditionReplacements) {
-        contents = contents.replaceAll(regex, (...args) => {
-            const compareValue = getCompareValue(...args);
-            return target === compareValue ? 'true' : 'false';
-        });
-    }
-
-    return contents;
-}
 
 // make top-level calls conditional on the target
 // this way they are removed during tree-shaking
-export const conditionalCompiler = (target) => ({
+export const conditionalCompiler = (target, platform, environment) => ({
     name: "browserrc-conditional-compiler",
     setup(build) {
         build.onLoad({ filter: /\.(ts|js|tsx)$/ }, async (args) => {
@@ -56,9 +24,25 @@ export const conditionalCompiler = (target) => ({
             contents = contents.replaceAll(buildRegex, (match) => {
                 return `if (false) build(`;
             });
+            
+            // optimize bundle size by removing known conditionals which bun can't recognize automatically
+            // find usages of isContentScript('target', ...) and replace with target === 'target'
+            // Can be isContentScript('target') or isContentScript('target', options) or isContentScript("target", options) or isContentScript("target")
+            contents = contents.replaceAll(/isContentScript\((['"])([^']+)['"],?.*?\)/g, (match, quote, target) => {
+                return `__TARGET__ === ${JSON.stringify(target)}`;
+            });
+                
+            contents = contents.replaceAll(/isBackground\(\)/g, (match) => {
+                return `__ENVIRONMENT__ === "background"`;
+            });
 
-            // Apply known conditional replacements to optimize bundle size
-            contents = replaceKnownConditionals(contents, target);
+            contents = contents.replaceAll(/isChrome\(\)/g, (match) => {
+                return `__PLATFORM__ === "chrome"`;
+            });
+
+            contents = contents.replaceAll(/isFirefox\(\)/g, (match) => {
+                return `__PLATFORM__ === "firefox"`;
+            });
 
             return {
                 contents,
@@ -90,13 +74,15 @@ export async function bundleWithTarget(entrypoint, config) {
         target: "browser",
         write: false,
         define: {
-            "__TARGET__": JSON.stringify(config.target)
+            "__TARGET__": JSON.stringify(config.target),
+            "__PLATFORM__": JSON.stringify(config.platform),
+            "__ENVIRONMENT__": JSON.stringify(config.environment)
         },
         minifySyntax: true,
         minify: true,
         plugins: [
             // make top-level calls conditional on the target
-            conditionalCompiler(config.target),
+            conditionalCompiler(config.target, config.platform, config.environment),
             // uses browser runtime versions of browserrc imports
             browserShimsPlugin,
         ],
@@ -105,4 +91,4 @@ export async function bundleWithTarget(entrypoint, config) {
     return result.outputs[0].text()
 }
 
-export { isBuntime, isBeingBundled, isBeingBundledFor } from './runtime.js';
+export { isChrome, isFirefox, isContent, isPage } from './runtime.js';

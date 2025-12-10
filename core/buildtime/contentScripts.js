@@ -59,17 +59,6 @@ function keyHandling() {
         .includeFileContent(path.join(__dirname, '..', '..', 'resources', 'segments', 'content', 'inputProcessing.hbs'))
 }
 
-function createContentScript(relpath, fn, options = {}) {
-    js(relpath, fn);
-    addContentScript(Object.assign({
-        matches: ['<all_urls>'],
-        js: [bundledName(relpath)],
-        run_at: 'document_idle',
-        all_frames: false,
-        platforms: { chrome: true, firefox: true },
-    }, options));
-}
-
 export function content(relpath, fn, options = {}) {
     js(relpath, fn);
     addContentScript(Object.assign({
@@ -91,7 +80,7 @@ export function isContentScript(target, options = {}) {
         platforms: { chrome: true, firefox: true },
     }, options));
     // Register for unified bundling
-    registerBundle(target, 'content-script', options);
+    registerBundle(target, 'content', options);
     return false;
 }
 

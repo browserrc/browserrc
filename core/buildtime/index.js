@@ -6,6 +6,15 @@ import { usesBackground } from "./background.ts";
 import { buildManifests } from "./manifest.ts";
 import { join } from 'path';
 
+try {
+    if (globalThis.__TARGET__ === undefined) {
+        globalThis.__TARGET__ = undefined;
+        globalThis.__PLATFORM__ = undefined;
+        globalThis.__ENVIRONMENT__ = 'build';
+    }
+} catch (error) {
+}
+
 /**
  * @type BuildPlatform = 'chrome' | 'firefox'
  * @type BuildPlatforms = { chrome: true } | { firefox: true } | { chrome: true, firefox: true }
