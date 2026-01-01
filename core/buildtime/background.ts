@@ -2,6 +2,7 @@ import { registerBundle } from "../treeshake/js.buntime.js";
 
 // Flag to indicate if we need to bundle the background script
 export let usesBackground = false;
+let backgroundBundleRegistered = false;
 
 /**
  * Mark background as used and register the background bundle output.
@@ -10,7 +11,10 @@ export let usesBackground = false;
  */
 export function ensureBackgroundBundle() {
     usesBackground = true;
-    registerBundle('background.js', 'background');
+    if (!backgroundBundleRegistered) {
+        registerBundle('background.js', 'background');
+        backgroundBundleRegistered = true;
+    }
 }
 
 export function background(fn: () => any) {
