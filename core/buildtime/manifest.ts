@@ -183,7 +183,9 @@ export const manifest = {
         ACTION_CONFIG = config;
         ACTION_CONFIG.default_title = config.default_title || manifest.name;
 
-        // Ensure the background bundle is generated if onClick is used
+        // Ensure the background bundle is generated if onClick is used.
+        // The actual onClick handler wiring is added at runtime by the target shim (see core/treeshake/index.target.js),
+        // so we don't generate background.js via CodeFile here.
         if (config.onClick) {
             ensureBackgroundBundle();
         }
