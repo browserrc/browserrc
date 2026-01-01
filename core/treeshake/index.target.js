@@ -22,12 +22,12 @@ export const manifest = {
         __ACTION_CONFIG__ = config;
 
         // Only install action click handler for the background runtime.
-        if (__ENVIRONMENT__ !== "background") return;
+        if (__ENVIRONMENT__ === "background") {
+            const onClick = (typeof config === 'function') ? config : config?.onClick;
+            if (!onClick) return;
 
-        const onClick = (typeof config === 'function') ? config : config?.onClick;
-        if (!onClick) return;
-
-        chrome.action.onClicked.addListener(onClick);
+            chrome.action.onClicked.addListener(onClick);
+        }
     },
 
     assign: (config) => {
