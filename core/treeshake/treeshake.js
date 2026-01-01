@@ -1,5 +1,11 @@
-import { resolve, extname } from 'path';
-import { file } from 'bun';
+function extname(p) {
+  const m = /(\.[^./\\]+)$/.exec(String(p))
+  return m ? m[1] : ''
+}
+
+function pathFromHere(rel) {
+  return new URL(rel, import.meta.url).pathname
+}
 
 
 // make top-level calls conditional on the target
@@ -8,40 +14,13 @@ export const conditionalCompiler = (target, platform, environment) => ({
     name: "browserrc-conditional-compiler",
     setup(build) {
         build.onLoad({ filter: /\.(ts|js|tsx)$/ }, async (args) => {
-            const text = await file(args.path).text();
+            const text = await Bun.file(args.path).text();
 
-            // Regex patterns for conditional compilation during bundling
-            const jsRegex = /(?<!\.)\bjs\s*\(\s*(['"`])(.*?)\1/g;
             const buildRegex = /(?<!function\s|export\s+function\s|Bun\.)\bbuild\s*\(/g;
 
-            // Replace js() calls with conditional execution based on target
-            // This ensures content scripts only execute when bundling for their specific target
-            let contents = text.replaceAll(jsRegex, (match, quote, scriptName) => {
-                return `if ("${scriptName}" === ${JSON.stringify(target)}) js(${quote}${scriptName}${quote}`;
-            });
-
             // Replace build() calls with false condition to eliminate build-time code from bundles
-            contents = contents.replaceAll(buildRegex, (match) => {
+            let contents = text.replaceAll(buildRegex, (match) => {
                 return `if (false) build(`;
-            });
-            
-            // optimize bundle size by removing known conditionals which bun can't recognize automatically
-            // find usages of isContentScript('target', ...) and replace with target === 'target'
-            // Can be isContentScript('target') or isContentScript('target', options) or isContentScript("target", options) or isContentScript("target")
-            contents = contents.replaceAll(/isContentScript\((['"])([^']+)['"],?.*?\)/g, (match, quote, target) => {
-                return `__TARGET__ === ${JSON.stringify(target)}`;
-            });
-                
-            contents = contents.replaceAll(/isBackground\(\)/g, (match) => {
-                return `__ENVIRONMENT__ === "background"`;
-            });
-
-            contents = contents.replaceAll(/isChrome\(\)/g, (match) => {
-                return `__PLATFORM__ === "chrome"`;
-            });
-
-            contents = contents.replaceAll(/isFirefox\(\)/g, (match) => {
-                return `__PLATFORM__ === "firefox"`;
             });
 
             return {
@@ -57,7 +36,8 @@ const browserShimsPlugin = {
     name: `browserrc-browser-shims`,
     setup(build) {
         build.onResolve({ filter: /^browserrc$/ }, () => {
-            return { path: resolve(__dirname, 'index.target.js') };
+            // Use the runtime entrypoint (no duplicated implementations).
+            return { path: pathFromHere('../runtime/index.js') };
         });
     },
 }
@@ -69,8 +49,21 @@ const browserShimsPlugin = {
  * @returns {string} the bundled code
  */
 export async function bundleWithTarget(entrypoint, config) {
+    // Resolve entrypoint relative to CWD if needed.
+    const resolvedEntrypoint = (() => {
+        try {
+            // absolute unix
+            if (typeof entrypoint === 'string' && entrypoint.startsWith('/')) return entrypoint
+            // absolute windows
+            if (typeof entrypoint === 'string' && /^[a-zA-Z]:[\\/]/.test(entrypoint)) return entrypoint
+            return new URL(String(entrypoint), `file://${process.cwd()}/`).pathname
+        } catch {
+            return entrypoint
+        }
+    })()
+
     const result = await Bun.build(Object.assign({
-        entrypoints: [resolve(entrypoint)],
+        entrypoints: [resolvedEntrypoint],
         target: "browser",
         write: false,
         define: {

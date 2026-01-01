@@ -1,0 +1,8 @@
+{
+  "content_scripts": [],
+  "permissions": [],
+  "manifest_version": 3,
+  "version": "0.0.1",
+  "name": "friendly-elephant",
+  "description": "A browser extension that nobody thought was important enough to write a description for, but is programmed using an awesome framework called browserrc"
+}

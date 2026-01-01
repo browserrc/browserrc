@@ -1,20 +1,25 @@
 export function isBeingBundled() {
     // __TARGET__ will have the file name if it is being bundled
-    return __TARGET__ !== undefined
+    // (build-time initializes it to `undefined`)
+    return typeof __TARGET__ !== 'undefined' && __TARGET__ !== undefined
 }
 
 export function isChrome() {
-    return __PLATFORM__ === 'chrome'
+    return typeof __PLATFORM__ !== 'undefined' && __PLATFORM__ === 'chrome'
 }
 
 export function isFirefox() {
-    return __PLATFORM__ === 'firefox'
+    return typeof __PLATFORM__ !== 'undefined' && __PLATFORM__ === 'firefox'
 }
 
 export function isContent() {
-    return __ENVIRONMENT__ === 'content'
+    return typeof __ENVIRONMENT__ !== 'undefined' && __ENVIRONMENT__ === 'content'
 }
 
 export function isPage() {
-    return __ENVIRONMENT__ === 'page'
+    return typeof __ENVIRONMENT__ !== 'undefined' && __ENVIRONMENT__ === 'page'
+}
+
+export function isBuild() {
+    return typeof __ENVIRONMENT__ !== 'undefined' && __ENVIRONMENT__ === 'build'
 }
