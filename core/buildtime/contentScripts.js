@@ -1,9 +1,7 @@
-import path from "path";
 import { addContentScript } from "./manifest.ts";
-import { CodeFile } from "./code.js";
-import { hooks } from "../../index.js";
-import { js, registerBundle } from "../treeshake/js.buntime.js";
+import { js, registerBundle } from "../treeshake/js.js";
 import { bundledName } from "../util.js";
+import { isBeingBundled } from "../treeshake/runtime.js";
 
 
 
@@ -20,6 +18,14 @@ import { bundledName } from "../util.js";
  * @returns {CodeFile} The javascript file builder
  */
 function dynamicContentScript(relPath, options = {}) {
+    // Build-only: lazy-load heavy deps (Handlebars/CodeFile/hooks/path).
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require('path');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { CodeFile } = require('./code.js');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { hooks } = require('../../index.js');
+
     const javascriptFile = new CodeFile({ relPath });
 
     // ensure manifest contains the declaration
@@ -55,39 +61,64 @@ function staticContentScript(relPath, options = {}) {
 
 
 function keyHandling() {
+    // Build-only: lazy-load heavy deps (Handlebars/CodeFile/path).
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require('path');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { CodeFile } = require('./code.js');
+
     return new CodeFile({ relPath: 'content/keyHandling.js' })
         .includeFileContent(path.join(__dirname, '..', '..', 'resources', 'segments', 'content', 'inputProcessing.hbs'))
 }
 
 export function content(relpath, fn, options = {}) {
+    // Build-time: register manifest entry + bundling.
+    // Bundle/runtime: execute only for the current target.
+    if (isBeingBundled()) {
+        if (typeof __TARGET__ !== 'undefined' && __TARGET__ === relpath) fn();
+        return;
+    }
+
     js(relpath, fn);
     addContentScript(Object.assign({
-        matches: ['<all_urls>'],
-        js: [bundledName(relpath)],
-        run_at: 'document_idle',
-        all_frames: false,
-        platforms: { chrome: true, firefox: true },
+      matches: ['<all_urls>'],
+      js: [bundledName(relpath)],
+      run_at: 'document_idle',
+      all_frames: false,
+      platforms: { chrome: true, firefox: true },
     }, options));
 }
 
 export function isContentScript(target, options = {}) {
-    // Register content script
+    // Bundle/runtime: act as a pure predicate.
+    if (isBeingBundled()) {
+        return typeof __TARGET__ !== 'undefined' && __TARGET__ === target;
+    }
+
+    // Build-time: register manifest entry + bundling, but keep predicate false.
     addContentScript(Object.assign({
-        matches: ['<all_urls>'],
-        js: [bundledName(target)],
-        run_at: 'document_idle',
-        all_frames: false,
-        platforms: { chrome: true, firefox: true },
+      matches: ['<all_urls>'],
+      js: [bundledName(target)],
+      run_at: 'document_idle',
+      all_frames: false,
+      platforms: { chrome: true, firefox: true },
     }, options));
-    // Register for unified bundling
     registerBundle(target, 'content', options);
     return false;
 }
 
 export default {
-    dynamic: dynamicContentScript,
-    static: staticContentScript,
-    create: content,
-    isContentScript: isContentScript,
-    keyHandling: keyHandling,
+    ...(typeof __ENVIRONMENT__ !== 'undefined' && __ENVIRONMENT__ === 'build'
+        ? {
+            dynamic: dynamicContentScript,
+            static: staticContentScript,
+            create: content,
+            isContentScript: isContentScript,
+            keyHandling: keyHandling,
+        }
+        : {
+            // Runtime/bundled: only expose the lightweight API surface.
+            create: content,
+            isContentScript: isContentScript,
+        }),
 }

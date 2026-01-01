@@ -1,10 +1,10 @@
-import { JSONFile } from "./code.js";
+import { JSONFile } from "./jsonFile.js";
 import type { ActionConfig, BuildOptions } from "../../index.js";
 import type { Permission, ManifestPermission, ManifestAction } from "../../index.js";
 import { onBuild } from "./index.js";
 import { ensureBackgroundBundle, usesBackground } from "./background.js";
-import path from "path";
-import fs from "fs";
+import { isBuild } from "../treeshake/runtime.js";
+// NOTE: fs/path/Bun are only used in build-only branches; Bun will tree-shake them away in bundles.
 
 
 interface ContentScriptEntry {
@@ -68,22 +68,38 @@ export function generateDefaultName(): string {
 export const DEFAULT_VERSION = '0.0.1';
 export const DEFAULT_DESCRIPTION = "A browser extension that nobody thought was important enough to write a description for, but is programmed using an awesome framework called browserrc";
 
-// internal manifest files state
-const MANIFESTS: Record<string, ExtendedJSONFile> = {
-    chrome: Object.assign(new JSONFile('chrome/manifest.json'), { content_scripts: [], permissions: [] }),
-    firefox: Object.assign(new JSONFile('firefox/manifest.json'), { content_scripts: [], permissions: [] }),
+type BuildState = {
+    manifests: Record<string, ExtendedJSONFile>;
+    permissions: Set<ManifestPermission>;
+    actionConfig: ActionConfig | null;
 };
 
-// internal permissions state
-const PERMISSIONS: Set<ManifestPermission> = new Set();
+let _buildState: BuildState | null = null;
+let _runtimeActionConfig: any = null;
 
-// internal action state
-let ACTION_CONFIG: ActionConfig | null = null;
+function getBuildState(): BuildState {
+    if (_buildState) return _buildState;
+    _buildState = {
+        manifests: {
+            chrome: Object.assign(new JSONFile('chrome/manifest.json'), { content_scripts: [], permissions: [] }),
+            firefox: Object.assign(new JSONFile('firefox/manifest.json'), { content_scripts: [], permissions: [] }),
+        },
+        permissions: new Set(),
+        actionConfig: null,
+    };
+    return _buildState;
+}
 
 /**
  * Handle popup bundling for Bun.HTMLBundle objects
  */
 async function handlePopupBundling(popup: Bun.HTMLBundle, buildContext: BuildOptions) {
+    // Lazy-load node APIs so they don't end up in browser bundles.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require('path');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+
     const { outputDir, platforms } = buildContext;
 
     // Use Bun to bundle the HTML and all its dependencies
@@ -134,30 +150,52 @@ export const manifest = {
      * Get the current permissions array
      */
     get permissions(): Permission[] {
-        return Array.from(PERMISSIONS) as Permission[];
+        if (!isBuild()) return [];
+        return Array.from(getBuildState().permissions) as Permission[];
     },
 
     /**
      * Set permissions directly (replaces all existing permissions)
      */
     set permissions(perms: Permission[]) {
-        PERMISSIONS.clear();
-        perms.forEach(perm => PERMISSIONS.add(perm));
+        if (!isBuild()) return;
+        const state = getBuildState();
+        state.permissions.clear();
+        perms.forEach(perm => state.permissions.add(perm));
     },
 
     /**
      * Get the current action configuration
      */
     get action(): ActionConfig | null {
-        return ACTION_CONFIG;
+        if (!isBuild()) return _runtimeActionConfig;
+        return getBuildState().actionConfig;
     },
 
     /**
      * Set the toolbar action configuration
      */
     set action(config: ActionConfig) {
+        // Runtime/bundled behavior (background wiring) lives here too.
+        if (!isBuild()) {
+            _runtimeActionConfig = config as any;
+            // Only wire onClick in background bundles.
+            try {
+                if (typeof __ENVIRONMENT__ !== 'undefined' && __ENVIRONMENT__ === "background") {
+                    const onClick = (typeof config === 'function') ? config : (config as any)?.onClick;
+                    if (!onClick) return;
+                    chrome.action.onClicked.addListener(onClick as any);
+                }
+            } catch {
+                // ignore (non-extension runtime)
+            }
+            return;
+        }
+
+        const state = getBuildState();
+
         if (typeof config === 'function') {
-            ACTION_CONFIG = {
+            state.actionConfig = {
                 // use defaults from primary manifest
                 default_title: manifest.name,
                 onClick: config,
@@ -180,11 +218,11 @@ export const manifest = {
             throw new Error('Popup must be a Bun.HTMLBundle from an HTML import (e.g., import popup from "./popup.html").');
         }
 
-        ACTION_CONFIG = config;
-        ACTION_CONFIG.default_title = config.default_title || manifest.name;
+        state.actionConfig = config;
+        state.actionConfig.default_title = (config as any).default_title || manifest.name;
 
         // Ensure the background bundle is generated if onClick is used.
-        // The actual onClick handler wiring is added at runtime by the target shim (see core/treeshake/index.target.js),
+        // The actual onClick handler wiring is added at runtime (same implementation),
         // so we don't generate background.js via CodeFile here.
         if (config.onClick) {
             ensureBackgroundBundle();
@@ -207,6 +245,8 @@ export const manifest = {
  * Platform-agnostic API for adding content scripts
  */
 export function addContentScript(options: ContentScriptOptions): void {
+    if (!isBuild()) return;
+    const state = getBuildState();
     const {
         matches = ['<all_urls>'],
         js,
@@ -228,10 +268,10 @@ export function addContentScript(options: ContentScriptOptions): void {
     };
 
     if (platforms?.chrome) {
-        MANIFESTS.chrome.content_scripts.push(contentScriptEntry);
+        state.manifests.chrome.content_scripts.push(contentScriptEntry);
     }
     if (platforms?.firefox) {
-        MANIFESTS.firefox.content_scripts.push(contentScriptEntry);
+        state.manifests.firefox.content_scripts.push(contentScriptEntry);
     }
 }
 
@@ -240,16 +280,18 @@ export function addContentScript(options: ContentScriptOptions): void {
  * Merge user manifest with internal manifest state to produce the final manifest files, and write them
  */
 export function buildManifests(outputDir: string, platforms: { chrome?: true; firefox?: true }): void {
-    const permissions = Array.from(PERMISSIONS);
+    if (!isBuild()) return;
+    const state = getBuildState();
+    const permissions = Array.from(state.permissions);
 
     // Build action manifest entry
     let actionEntry: Partial<ManifestAction> | undefined;
-    if (ACTION_CONFIG) {
+    if (state.actionConfig) {
         actionEntry = {};
 
         // Copy manifest-safe properties from ACTION_CONFIG
         // ACTION_CONFIG is always an object at this point (processed in setter)
-        const { popup, onClick, ...manifestProps } = ACTION_CONFIG as any;
+        const { popup, onClick, ...manifestProps } = state.actionConfig as any;
         Object.assign(actionEntry, manifestProps);
 
         // Override popup path to use subdirectory if popup is specified
@@ -259,7 +301,7 @@ export function buildManifests(outputDir: string, platforms: { chrome?: true; fi
     }
 
     if (platforms.chrome) {
-        Object.assign(MANIFESTS.chrome, {
+        Object.assign(state.manifests.chrome, {
             manifest_version: 3,
             version: manifest.version,
             name: manifest.name,
@@ -268,11 +310,11 @@ export function buildManifests(outputDir: string, platforms: { chrome?: true; fi
             ...(usesBackground && { background: { service_worker: 'background.js' } }),
             ...(actionEntry && Object.keys(actionEntry).length > 0 && { action: actionEntry }),
         });
-        MANIFESTS.chrome.write(outputDir);
+        state.manifests.chrome.write(outputDir);
     }
 
     if (platforms.firefox) {
-        Object.assign(MANIFESTS.firefox, {
+        Object.assign(state.manifests.firefox, {
             manifest_version: 3,
             version: manifest.version,
             name: manifest.name,
@@ -281,6 +323,6 @@ export function buildManifests(outputDir: string, platforms: { chrome?: true; fi
             ...(usesBackground && { background: { scripts: ['background.js'] } }),
             ...(actionEntry && Object.keys(actionEntry).length > 0 && { action: actionEntry }),
         });
-        MANIFESTS.firefox.write(outputDir);
+        state.manifests.firefox.write(outputDir);
     }
 }

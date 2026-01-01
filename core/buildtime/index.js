@@ -1,13 +1,16 @@
 // Entrypoint for browserrc build plugin
 
 import { Hook } from "../hooks.js";
-import { bundleFiles } from "../treeshake/js.buntime.js";
+import { bundleFiles } from "../treeshake/js.js";
 import { usesBackground } from "./background.ts";
 import { buildManifests } from "./manifest.ts";
 import { join } from 'path';
 
 try {
-    if (globalThis.__TARGET__ === undefined) {
+    // Only initialize build-time globals when we are NOT inside a bundled target.
+    // During bundling, Bun `define`s replace __ENVIRONMENT__/__TARGET__/__PLATFORM__
+    // with string literals, so `typeof __ENVIRONMENT__` will be `"string"`.
+    if (typeof __ENVIRONMENT__ === 'undefined') {
         globalThis.__TARGET__ = undefined;
         globalThis.__PLATFORM__ = undefined;
         globalThis.__ENVIRONMENT__ = 'build';

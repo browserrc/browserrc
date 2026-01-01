@@ -13,8 +13,8 @@ export { CodeFile, JSONFile } from './core/buildtime/code.js';
 export { onAllPages } from './helpers/index.ts';
 export { HTMLCodeFile, html } from './core/codegen/html/htmlCodegen.js';
 export { jsx, jsxs, Fragment, jsxDEV } from './jsx-runtime.js';
-export { js } from './core/treeshake/js.buntime.js';
-export { isChrome, isFirefox, isContent, isPage } from './core/treeshake/treeshake.js';
+export { js } from './core/treeshake/js.js';
+export { isChrome, isFirefox, isContent, isPage, isBuild } from './core/treeshake/runtime.js';
 
 // Constants
 export const hello = () => 'Hello from browserrc!';

@@ -1,4 +1,5 @@
-import { registerBundle } from "../treeshake/js.buntime.js";
+import { registerBundle } from "../treeshake/js.js";
+import { isBeingBundled } from "../treeshake/runtime.js";
 
 // Flag to indicate if we need to bundle the background script
 export let usesBackground = false;
@@ -15,11 +16,24 @@ export function ensureBackgroundBundle() {
 }
 
 export function background(fn: () => any) {
-    ensureBackgroundBundle();
+    // Build-time: ensure we produce a background bundle output.
+    // Bundle/runtime: execute only in background bundles.
+    if (!isBeingBundled()) {
+        ensureBackgroundBundle();
+        return null;
+    }
+    if (typeof __ENVIRONMENT__ !== 'undefined' && __ENVIRONMENT__ === 'background') {
+        return fn();
+    }
     return null;
 }
 
 export function isBackground(): boolean {
-    ensureBackgroundBundle();
-    return false;
+    // Build-time: calling this should still opt-in to generating background output
+    // (so `if (isBackground()) {}` patterns generate `background.js`).
+    if (!isBeingBundled()) {
+        ensureBackgroundBundle();
+        return false;
+    }
+    return typeof __ENVIRONMENT__ !== 'undefined' && __ENVIRONMENT__ === 'background';
 }
