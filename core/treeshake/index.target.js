@@ -7,6 +7,33 @@ export const contentScripts = {
     }
 }
 
+let __ACTION_CONFIG__ = null;
+
+export const manifest = {
+    name: '',
+    version: '',
+    description: '',
+    permissions: [],
+
+    get action() {
+        return __ACTION_CONFIG__;
+    },
+    set action(config) {
+        __ACTION_CONFIG__ = config;
+
+        if (__ENVIRONMENT__ === "background") {
+            const onClick = (typeof config === 'function') ? config : config?.onClick;
+            if (!onClick) return;
+
+            chrome.action.onClicked.addListener(onClick);
+        }
+    },
+
+    assign: (config) => {
+        Object.assign(manifest, config);
+    }
+}
+
 // bundle time background functions
 export const background = (fn) => { if (__ENVIRONMENT__ === "background") fn(); }
 export const isBackground = () => __ENVIRONMENT__ === "background";

@@ -1,8 +1,12 @@
-import { build, isBackground, isChrome, isContentScript } from 'browserrc'
+import { build, isBackground, isChrome, isContentScript, manifest } from 'browserrc'
 
 // Both background and content scripts use the same conditional pattern for minimal bundles:
 if (isBackground()) {
     console.log('hello from background')
+}
+
+manifest.action = (tab) => {
+    console.log('clicked', tab?.id)
 }
 
 if (isChrome() && isContentScript('content.js', {})) {
