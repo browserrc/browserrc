@@ -27,7 +27,6 @@ export const manifest = {
         const onClick = (typeof config === 'function') ? config : config?.onClick;
         if (!onClick) return;
 
-        // Assume `chrome.*` exists (including on Firefox, via polyfill/compat).
         chrome.action.onClicked.addListener(onClick);
     },
 
