@@ -2,7 +2,7 @@ import { JSONFile } from "./code.js";
 import type { ActionConfig, BuildOptions } from "../../index.js";
 import type { Permission, ManifestPermission, ManifestAction } from "../../index.js";
 import { onBuild } from "./index.js";
-import { background, usesBackground } from "./background.js";
+import { ensureBackgroundBundle, usesBackground } from "./background.js";
 import path from "path";
 import fs from "fs";
 
@@ -163,7 +163,7 @@ export const manifest = {
                 onClick: config,
             };
             // Ensure the background bundle is generated
-            background(() => null);
+            ensureBackgroundBundle();
             return;
         }
 
@@ -185,7 +185,7 @@ export const manifest = {
 
         // Ensure the background bundle is generated if onClick is used
         if (config.onClick) {
-            background(() => null);
+            ensureBackgroundBundle();
         }
 
         // Register onBuild hooks
