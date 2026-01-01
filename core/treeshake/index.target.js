@@ -7,9 +7,6 @@ export const contentScripts = {
     }
 }
 
-// Minimal runtime manifest shim.
-// This exists so user code that imports/sets `manifest.*` can still bundle cleanly.
-// Build-time manifest generation still happens in core/buildtime/manifest.ts.
 let __ACTION_CONFIG__ = null;
 
 export const manifest = {
