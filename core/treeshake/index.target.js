@@ -21,7 +21,6 @@ export const manifest = {
     set action(config) {
         __ACTION_CONFIG__ = config;
 
-        // Only install action click handler for the background runtime.
         if (__ENVIRONMENT__ === "background") {
             const onClick = (typeof config === 'function') ? config : config?.onClick;
             if (!onClick) return;
