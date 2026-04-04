@@ -193,7 +193,7 @@ export class KeyProcessor {
   buildContextWithState() {
     return {
       ...(this.context || {}),
-      keys: [...this.matchedPath.map((n) => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean),
+      keys: this.getMatchedSequence(),
       mode: this.currentMode,
       currentNode: this.currentNode,
       matchedPath: this.matchedPath,
@@ -304,11 +304,11 @@ export class KeyProcessor {
       this.currentNode.hooks?.onMatched?.trigger(ctx, this.currentNode);
 
       if (this.currentNode.isAmbiguous()) {
-        this.pendingAmbiguousSequence = [...this.matchedPath.map((n) => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean);
+        this.pendingAmbiguousSequence = this.getMatchedSequence();
         this.setTimer("AMBIGUOUS");
         return false;
       } else if (this.currentNode.canComplete()) {
-        const keySequence = [...this.matchedPath.map((n) => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean);
+        const keySequence = this.getMatchedSequence();
         const sequenceInfo = { keySequence, mode: this.currentMode };
 
         // Key repeat support
@@ -432,7 +432,12 @@ export class KeyProcessor {
    * Get matched sequence
    */
   getMatchedSequence() {
-    return [...this.matchedPath.map(n => n.key).filter(Boolean), this.currentNode?.key].filter(Boolean);
+    const keys = [];
+    for (const node of this.matchedPath) {
+      if (node.key) keys.push(node.key);
+    }
+    if (this.currentNode?.key) keys.push(this.currentNode.key);
+    return keys;
   }
 
 }
