@@ -161,6 +161,124 @@ export function getPlaceholder(name) {
 }
 
 /**
+ * Normalization for Mac option+shift key combos which produce symbols.
+ * Maps these symbols back to their corresponding character on the key.
+ */
+const MAC_OPTION_SPECIAL_KEYS = {
+  // Mac Option+Shift+Numbers
+  '⁄': '1',
+  '€': '2',
+  '‹': '3',
+  '›': '4',
+  'ﬁ': '5',
+  'ﬂ': '6',
+  '‡': '7',
+  '°': '8',
+  '·': '9',
+  '‚': '0',
+  // Mac Option+Numbers (without Shift)
+  '¡': '1',
+  '™': '2',
+  '£': '3',
+  '¢': '4',
+  '∞': '5',
+  '§': '6',
+  '¶': '7',
+  '•': '8',
+  'ª': '9',
+  'º': '0',
+};
+
+/**
+ * Special keys mapping for parseKey
+ * Maps vim-style key notation to standardized key names
+ */
+const PARSE_SPECIAL_KEYS = {
+  // Basic special keys
+  '<esc>': 'Escape',
+  '<escape>': 'Escape',
+  'esc': 'Escape',
+  'escape': 'Escape',
+  '<enter>': 'Enter',
+  '<cr>': 'Enter',
+  '<return>': 'Enter',
+  'enter': 'Enter',
+  'cr': 'Enter',
+  'return': 'Enter',
+  '<space>': ' ',
+  'space': ' ',
+  '<tab>': 'Tab',
+  'tab': 'Tab',
+  '<backspace>': 'Backspace',
+  '<bs>': 'Backspace',
+  'backspace': 'Backspace',
+  'bs': 'Backspace',
+  '<delete>': 'Delete',
+  '<del>': 'Delete',
+  'delete': 'Delete',
+  'del': 'Delete',
+
+  // Arrow keys (normalize to Up, Down, Left, Right for vim compatibility)
+  '<up>': 'Up',
+  'up': 'Up',
+  '<down>': 'Down',
+  'down': 'Down',
+  '<left>': 'Left',
+  'left': 'Left',
+  '<right>': 'Right',
+  'right': 'Right',
+
+  // Function keys F1-F12
+  '<f1>': 'F1',
+  'f1': 'F1',
+  '<f2>': 'F2',
+  'f2': 'F2',
+  '<f3>': 'F3',
+  'f3': 'F3',
+  '<f4>': 'F4',
+  'f4': 'F4',
+  '<f5>': 'F5',
+  'f5': 'F5',
+  '<f6>': 'F6',
+  'f6': 'F6',
+  '<f7>': 'F7',
+  'f7': 'F7',
+  '<f8>': 'F8',
+  'f8': 'F8',
+  '<f9>': 'F9',
+  'f9': 'F9',
+  '<f10>': 'F10',
+  'f10': 'F10',
+  '<f11>': 'F11',
+  'f11': 'F11',
+  '<f12>': 'F12',
+  'f12': 'F12',
+
+  // Navigation keys
+  '<home>': 'Home',
+  'home': 'Home',
+  '<end>': 'End',
+  'end': 'End',
+  '<pageup>': 'PageUp',
+  'pageup': 'PageUp',
+  '<pagedown>': 'PageDown',
+  'pagedown': 'PageDown',
+  '<insert>': 'Insert',
+  'insert': 'Insert',
+
+  // Other special keys
+  '<nop>': 'Nop', // No operation
+  'nop': 'Nop',
+  '<bar>': '|',   // Pipe character
+  'bar': '|',
+  '<bslash>': '\\', // Backslash
+  'bslash': '\\',
+
+  // Include Mac Option key symbol mappings
+  ...MAC_OPTION_SPECIAL_KEYS,
+};
+
+/**
  * Parse a key string into a normalized key representation
  * Handles modifiers like C- (Ctrl), M- (Alt), S- (Shift)
  */
@@ -235,116 +353,13 @@ export function parseKey(keyString) {
     modifiers.shift = true;
   }
 
-  // Handle special keys - comprehensive list matching vim's key-notation
-  const specialKeys = {
-    // Basic special keys
-    '<esc>': 'Escape',
-    '<escape>': 'Escape',
-    'esc': 'Escape',
-    'escape': 'Escape',
-    '<enter>': 'Enter',
-    '<cr>': 'Enter',
-    '<return>': 'Enter',
-    'enter': 'Enter',
-    'cr': 'Enter',
-    'return': 'Enter',
-    '<space>': ' ',
-    'space': ' ',
-    '<tab>': 'Tab',
-    'tab': 'Tab',
-    '<backspace>': 'Backspace',
-    '<bs>': 'Backspace',
-    'backspace': 'Backspace',
-    'bs': 'Backspace',
-    '<delete>': 'Delete',
-    '<del>': 'Delete',
-    'delete': 'Delete',
-    'del': 'Delete',
-    
-    // Arrow keys (normalize to Up, Down, Left, Right for vim compatibility)
-    '<up>': 'Up',
-    'up': 'Up',
-    '<down>': 'Down',
-    'down': 'Down',
-    '<left>': 'Left',
-    'left': 'Left',
-    '<right>': 'Right',
-    'right': 'Right',
-    
-    // Function keys F1-F12
-    '<f1>': 'F1',
-    'f1': 'F1',
-    '<f2>': 'F2',
-    'f2': 'F2',
-    '<f3>': 'F3',
-    'f3': 'F3',
-    '<f4>': 'F4',
-    'f4': 'F4',
-    '<f5>': 'F5',
-    'f5': 'F5',
-    '<f6>': 'F6',
-    'f6': 'F6',
-    '<f7>': 'F7',
-    'f7': 'F7',
-    '<f8>': 'F8',
-    'f8': 'F8',
-    '<f9>': 'F9',
-    'f9': 'F9',
-    '<f10>': 'F10',
-    'f10': 'F10',
-    '<f11>': 'F11',
-    'f11': 'F11',
-    '<f12>': 'F12',
-    'f12': 'F12',
-    
-    // Navigation keys
-    '<home>': 'Home',
-    'home': 'Home',
-    '<end>': 'End',
-    'end': 'End',
-    '<pageup>': 'PageUp',
-    'pageup': 'PageUp',
-    '<pagedown>': 'PageDown',
-    'pagedown': 'PageDown',
-    '<insert>': 'Insert',
-    'insert': 'Insert',
-    
-    // Other special keys
-    '<nop>': 'Nop', // No operation
-    'nop': 'Nop',
-    '<bar>': '|',   // Pipe character
-    'bar': '|',
-    '<bslash>': '\\', // Backslash
-    'bslash': '\\',
-    '€': '2', // Mac Option+Shift+2 maps to Euro symbol, remap to 2
-    '¡': '1', // Mac Option+1 maps to Inverted Exclamation, remap to 1
-    '™': '2', // Mac Option+2 maps to Trademark, remap to 2
-    '£': '3', // Mac Option+3 maps to Pound, remap to 3
-    '¢': '4', // Mac Option+4 maps to Cent, remap to 4
-    '∞': '5', // Mac Option+5 maps to Infinity, remap to 5
-    '§': '6', // Mac Option+6 maps to Section, remap to 6
-    '¶': '7', // Mac Option+7 maps to Paragraph, remap to 7
-    '•': '8', // Mac Option+8 maps to Bullet, remap to 8
-    'ª': '9', // Mac Option+9 maps to Feminine Ordinal, remap to 9
-    'º': '0', // Mac Option+0 maps to Masculine Ordinal, remap to 0
-    '⁄': '1', // Mac Option+Shift+1 maps to Fraction Slash (sometimes), remap to 1
-    '‹': '3', // Mac Option+Shift+3 maps to Single Left-Pointing Angle Quotation Mark
-    '›': '4', // Mac Option+Shift+4
-    'ﬁ': '5', // Mac Option+Shift+5
-    'ﬂ': '6', // Mac Option+Shift+6
-    '‡': '7', // Mac Option+Shift+7
-    '°': '8', // Mac Option+Shift+8
-    '·': '9', // Mac Option+Shift+9
-    '‚': '0', // Mac Option+Shift+0
-  };
-
   // Try lookup with brackets first (if original had brackets), then without
   // Use processedKeyString to check original format
   const lookupKey = hadBrackets ? `<${key}>` : key;
-  if (specialKeys[lookupKey]) {
-    key = specialKeys[lookupKey];
-  } else if (specialKeys[key]) {
-    key = specialKeys[key];
+  if (PARSE_SPECIAL_KEYS[lookupKey]) {
+    key = PARSE_SPECIAL_KEYS[lookupKey];
+  } else if (PARSE_SPECIAL_KEYS[key]) {
+    key = PARSE_SPECIAL_KEYS[key];
   } else {
     // If not a special key, check if it's a function key pattern
     // Handle function keys that might not be in brackets (though vim uses brackets)
@@ -409,6 +424,12 @@ export function parseKeySequence(keySequenceString) {
 }
 
 /**
+ * Special keys mapping for eventToKey
+ * Normalizes mac option+shift key combos which produce symbols
+ */
+const EVENT_SPECIAL_KEYS = MAC_OPTION_SPECIAL_KEYS;
+
+/**
  * Convert a KeyboardEvent to a normalized key representation
  */
 export function eventToKey(event) {
@@ -439,33 +460,8 @@ export function eventToKey(event) {
   
   // Normalization for mac option+shift key combos which produce symbols
   // We do this BEFORE pattern matching to ensure the key is normalized correctly
-  const specialKeys = {
-    // Mac Option+Shift+Numbers
-    '⁄': '1',
-    '€': '2', 
-    '‹': '3', 
-    '›': '4', 
-    'ﬁ': '5', 
-    'ﬂ': '6', 
-    '‡': '7', 
-    '°': '8', 
-    '·': '9', 
-    '‚': '0', 
-    // Mac Option+Numbers (without Shift)
-    '¡': '1', 
-    '™': '2', 
-    '£': '3', 
-    '¢': '4', 
-    '∞': '5', 
-    '§': '6', 
-    '¶': '7', 
-    '•': '8', 
-    'ª': '9', 
-    'º': '0',
-  };
-
-  if (specialKeys[key]) {
-    key = specialKeys[key];
+  if (EVENT_SPECIAL_KEYS[key]) {
+    key = EVENT_SPECIAL_KEYS[key];
   }
   
   // Normalize the key name using pattern matching
@@ -487,6 +483,7 @@ export function eventToKey(event) {
 
   // For the internal key representation, use lowercase for consistency
   // except for special keys that need to match vim notation
+  // We MUST ensure the key is standardized before creating the keyToString representation
   const internalKey = (normalizedKey.startsWith('F') && /^F\d+$/i.test(normalizedKey)) 
     ? normalizedKey 
     : normalizedKey.toLowerCase();
@@ -494,7 +491,7 @@ export function eventToKey(event) {
   return {
     key: internalKey,
     modifiers,
-    string: keyToString({ key: normalizedKey, modifiers }),
+    string: keyToString({ key: internalKey, modifiers }),
   };
 }
 
@@ -511,6 +508,45 @@ const MODIFIER_TO_STRING = [
 ];
 
 /**
+ * Reverse mapping for keyToString
+ * Maps standardized key names to vim-style notation
+ *
+ * IMPORTANT: Standardized internal key names are lowercase!
+ */
+const REVERSE_SPECIAL_KEYS = {
+  'escape': '<Esc>',
+  'enter': '<Enter>',
+  ' ': '<Space>',
+  'tab': '<Tab>',
+  'backspace': '<Backspace>',
+  'delete': '<Delete>',
+  'up': '<Up>',
+  'down': '<Down>',
+  'left': '<Left>',
+  'right': '<Right>',
+  'home': '<Home>',
+  'end': '<End>',
+  'pageup': '<PageUp>',
+  'pagedown': '<PageDown>',
+  'insert': '<Insert>',
+  'F1': '<F1>',
+  'F2': '<F2>',
+  'F3': '<F3>',
+  'F4': '<F4>',
+  'F5': '<F5>',
+  'F6': '<F6>',
+  'F7': '<F7>',
+  'F8': '<F8>',
+  'F9': '<F9>',
+  'F10': '<F10>',
+  'F11': '<F11>',
+  'F12': '<F12>',
+  'nop': '<Nop>',
+  '|': '<Bar>',
+  '\\': '<Bslash>',
+};
+
+/**
  * Convert a key object to a string representation
  */
 export function keyToString(keyObj) {
@@ -524,40 +560,7 @@ export function keyToString(keyObj) {
   }
   
   // Handle special keys - map to vim notation
-  const reverseSpecial = {
-    'Escape': '<Esc>',
-    'Enter': '<Enter>',
-    ' ': '<Space>',
-    'Tab': '<Tab>',
-    'Backspace': '<Backspace>',
-    'Delete': '<Delete>',
-    'Up': '<Up>',
-    'Down': '<Down>',
-    'Left': '<Left>',
-    'Right': '<Right>',
-    'Home': '<Home>',
-    'End': '<End>',
-    'PageUp': '<PageUp>',
-    'PageDown': '<PageDown>',
-    'Insert': '<Insert>',
-    'F1': '<F1>',
-    'F2': '<F2>',
-    'F3': '<F3>',
-    'F4': '<F4>',
-    'F5': '<F5>',
-    'F6': '<F6>',
-    'F7': '<F7>',
-    'F8': '<F8>',
-    'F9': '<F9>',
-    'F10': '<F10>',
-    'F11': '<F11>',
-    'F12': '<F12>',
-    'Nop': '<Nop>',
-    '|': '<Bar>',
-    '\\': '<Bslash>',
-  };
-
-  str += reverseSpecial[keyObj.key] || keyObj.key;
+  str += REVERSE_SPECIAL_KEYS[keyObj.key] || keyObj.key;
   return str;
 }
 
