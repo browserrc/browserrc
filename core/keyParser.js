@@ -375,8 +375,7 @@ export function parseKey(keyString) {
     : key.toLowerCase();
 
   // Build normalized string representation
-  const keyObj = { key: key, modifiers };
-  const normalizedString = keyToString(keyObj);
+  const normalizedString = keyToString({ key: internalKey, modifiers });
 
   return {
     key: internalKey,
