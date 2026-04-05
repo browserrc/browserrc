@@ -16,6 +16,10 @@ export class HTMLCodeFile {
     
     write(outputDir = '.') {
         const outputPath = path.join(outputDir, this.relPath)
+        const dir = path.dirname(outputPath)
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true })
+        }
         fs.writeFileSync(outputPath, this.html)
     }
 }
