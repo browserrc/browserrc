@@ -29,7 +29,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "bun run node --test core/keyProcessor.test.js core/buildtime/code.test.js",
+    "test": "bun run node --test core/keyProcessor.test.js core/buildtime/code.test.js core/codegen/html/htmlCodegen.test.js",
     "build": "bun -e \"console.log('✓ Package valid'); import('./index.js').then(() => console.log('✓ Module builds successfully')).catch(err => { console.error('✗ Module build failed:', err.message); process.exit(1); });\""
   },
   "keywords": [
