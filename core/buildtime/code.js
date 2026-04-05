@@ -247,24 +247,6 @@ function getSeparator(existingContent) {
         return this;
     }
      
-    references(symbol) {
-        if (typeof symbol === 'string') {
-            // This should be way more sophisticated, but for now it's a simple check for the symbol in the code
-            return this.code.includes(symbol)
-        }
-        else if (symbol instanceof Function) {
-            // Check by name
-            return this.code.includes(symbol.name)
-        }
-        return false;
-    }
-     
-    includeFunctionIfReferenced(symbol) {
-        if (this.references(symbol)) {
-            this.includeFunction(symbol);
-        }
-        return this;
-    }
      
      
     /**

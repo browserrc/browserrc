@@ -14,7 +14,6 @@ export { onAllPages, code } from './helpers/index.ts';
 export { HTMLCodeFile, html } from './core/codegen/html/htmlCodegen.js';
 export { jsx, jsxs, Fragment, jsxDEV } from './jsx-runtime.js';
 
-export const hello = () => 'Hello from browserrc!';
 export const version = '1.0.0';
 
 export const hooks = {

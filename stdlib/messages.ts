@@ -25,8 +25,3 @@ export function onMessage<T, R>(type: string, handler: (data: T) => R) {
     })
 }
 
-export function messageScope(codeFile: CodeFile) {
-    codeFile.onPreBundle(async () => {
-        codeFile.includeFunctionIfReferenced(onMessage)
-    })
-}

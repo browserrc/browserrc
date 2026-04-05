@@ -2,8 +2,6 @@
  * Key parsing and placeholder resolution
  */
 
-const PLACEHOLDERS = new Map();
-
 /**
  * Modifier patterns for parsing key strings
  * 
@@ -147,28 +145,10 @@ const KEY_NORMALIZATION_PATTERNS = [
 ];
 
 /**
- * Set a placeholder value (e.g., "<leader>" -> "C-b")
- */
-export function setPlaceholder(name, value) {
-  PLACEHOLDERS.set(name, value);
-}
-
-/**
- * Get placeholder value
- */
-export function getPlaceholder(name) {
-  return PLACEHOLDERS.get(name);
-}
-
-/**
  * Parse a key string into a normalized key representation
  * Handles modifiers like C- (Ctrl), M- (Alt), S- (Shift)
  */
 export function parseKey(keyString) {
-  if (PLACEHOLDERS.has(keyString)) {
-    return parseKey(PLACEHOLDERS.get(keyString));
-  }
-
   // Special handling: convert ? to S-/ (Shift + /)
   // This allows users to write ? in config and it works correctly
   // Handles both standalone ? and <?> formats
@@ -561,16 +541,3 @@ export function keyToString(keyObj) {
   return str;
 }
 
-/**
- * Check if two key objects match
- */
-export function keysMatch(key1, key2) {
-  return (
-    key1.key === key2.key &&
-    key1.modifiers.ctrl === key2.modifiers.ctrl &&
-    key1.modifiers.alt === key2.modifiers.alt &&
-    key1.modifiers.shift === key2.modifiers.shift &&
-    key1.modifiers.meta === key2.modifiers.meta &&
-    key1.modifiers.super === key2.modifiers.super
-  );
-}
