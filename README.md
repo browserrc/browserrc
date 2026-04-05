@@ -49,9 +49,19 @@ await build({
 ```javascript
 import { contentScripts } from 'browserrc';
 
+// Add key handling content script
 const keys = contentScripts.keyHandling();
-keys.set('<leader>ww', () => {
-  console.log('Window prefix triggered');
+
+// The keyHandling CodeFile provides a KeyProcessor instance named 'keyProcessor'
+keys.addLine("keyProcessor.set('<leader>ww')");
+keys.onPreBundle((file) => {
+    file.addBlock(`
+        keyProcessor.onSequenceComplete.register(({ keySequence }) => {
+            if (keySequence.join('') === 'ww') {
+                console.log('Window prefix triggered!');
+            }
+        });
+    `);
 });
 ```
 
