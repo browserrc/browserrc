@@ -378,7 +378,9 @@ export function parseKey(keyString) {
  */
 export function parseKeySequence(keySequenceString) {
   // Split by angle brackets or single characters
-  const parts = [];
+  // Performance: Iterates directly to avoid intermediate array allocations
+  // (avoids .split, spread syntax, and .map)
+  const result = [];
   let current = '';
   let inBracket = false;
 
@@ -388,26 +390,30 @@ export function parseKeySequence(keySequenceString) {
     if (char === '<') {
       if (current) {
         // Add any accumulated single characters
-        parts.push(...current.split(''));
+        for (let j = 0; j < current.length; j++) {
+          result.push(parseKey(current[j]));
+        }
         current = '';
       }
       inBracket = true;
       current = '<';
     } else if (char === '>') {
       current += '>';
-      parts.push(current);
+      result.push(parseKey(current));
       current = '';
       inBracket = false;
     } else {
       current += char;
       if (!inBracket && i === keySequenceString.length - 1) {
         // Last character, add remaining
-        parts.push(...current.split(''));
+        for (let j = 0; j < current.length; j++) {
+          result.push(parseKey(current[j]));
+        }
       }
     }
   }
 
-  return parts.map(part => parseKey(part));
+  return result;
 }
 
 /**
