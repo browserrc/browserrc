@@ -220,13 +220,18 @@ function calculateActionId(fn) {
     // to ensure uniqueness accross environments for the same function.
     const environment = inferCurrentEnvironment();
     const str = JSON.stringify({ fn: fn.toString(), env: environment });
-    let hash = 0;
+
+    // FNV-1a 64-bit hash for better collision resistance
+    const FNV_OFFSET_BASIS = 0xcbf29ce484222325n;
+    const FNV_PRIME = 0x100000001b3n;
+
+    let hash = FNV_OFFSET_BASIS;
     for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & 0xffffffff; // Convert to 32-bit integer
+        hash ^= BigInt(str.charCodeAt(i));
+        hash = BigInt.asUintN(64, hash * FNV_PRIME);
     }
-    return `action_${Math.abs(hash)}`;
+
+    return `action_${hash.toString(16)}`;
 }
 
 /**
