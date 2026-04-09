@@ -470,6 +470,19 @@ declare module 'browserrc' {
   export function code(relPath: string, content: string): CodeFile;
   export function code(relPath: string, content: () => void): CodeFile;
 
+  /**
+   * Utility for defining keybindings in the extension.
+   */
+  export const keymap: {
+    /**
+     * Set a keybinding.
+     *
+     * @param sequence - The key sequence (e.g., "<leader>ww", "jk", "<C-a>")
+     * @param action - The function to execute when the sequence is matched
+     */
+    set(sequence: string, action: Function): void;
+  };
+
   // ============================================================================
   // HTML Code Generation Types
   // ============================================================================
