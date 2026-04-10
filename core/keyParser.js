@@ -297,17 +297,14 @@ export function parseKey(keyString) {
   
   // Extract content from angle brackets if present
   // e.g., "<S-F1>" -> "S-F1", "<F1>" -> "F1"
-  if (key.startsWith('<') && key.endsWith('>')) {
+  const hadBrackets = processedKeyString.charCodeAt(0) === 60 /* < */ && processedKeyString.charCodeAt(processedKeyString.length - 1) === 62 /* > */;
+  if (hadBrackets) {
     content = key.slice(1, -1);
   }
   
-  // Track if original had brackets for proper lookup
-  // Use processedKeyString to check original format
-  const hadBrackets = processedKeyString.startsWith('<') && processedKeyString.endsWith('>');
-  
   // Check if the original key (before processing) is a capital letter
   // We need to check this before lowercasing, so we preserve the original case info
-  const originalKeyIsCapital = !hadBrackets && /^[A-Z]$/.test(content);
+  const originalKeyIsCapital = !hadBrackets && content.length === 1 && content >= 'A' && content <= 'Z';
   
   // Parse modifiers from content using pattern matching
   // Vim uses: C- (Ctrl), M- or A- (Alt/Meta), S- (Shift), D- (Super/Command), T- (Meta)
@@ -316,14 +313,17 @@ export function parseKey(keyString) {
   
   while (foundModifier) {
     foundModifier = false;
-    for (const { pattern, property, length } of MODIFIER_PATTERNS) {
-      if (remaining.startsWith(pattern)) {
-        if (Array.isArray(property)) {
-          property.forEach(p => modifiers[p] = true);
+    for (let i = 0; i < MODIFIER_PATTERNS.length; i++) {
+      const patternObj = MODIFIER_PATTERNS[i];
+      if (remaining.startsWith(patternObj.pattern)) {
+        if (Array.isArray(patternObj.property)) {
+          for (let j = 0; j < patternObj.property.length; j++) {
+            modifiers[patternObj.property[j]] = true;
+          }
         } else {
-          modifiers[property] = true;
+          modifiers[patternObj.property] = true;
         }
-        remaining = remaining.slice(length);
+        remaining = remaining.slice(patternObj.length);
         foundModifier = true;
         break; // Restart from beginning to check all patterns again
       }
@@ -343,21 +343,20 @@ export function parseKey(keyString) {
   // Try lookup with brackets first (if original had brackets), then without
   // Use processedKeyString to check original format
   const lookupKey = hadBrackets ? `<${key}>` : key;
-  if (SPECIAL_KEYS_PARSE[lookupKey]) {
-    key = SPECIAL_KEYS_PARSE[lookupKey];
-  } else if (SPECIAL_KEYS_PARSE[key]) {
-    key = SPECIAL_KEYS_PARSE[key];
+  const specialKey = SPECIAL_KEYS_PARSE[lookupKey] || SPECIAL_KEYS_PARSE[key];
+  if (specialKey) {
+    key = specialKey;
   } else {
     // If not a special key, check if it's a function key pattern
     // Handle function keys that might not be in brackets (though vim uses brackets)
-    if (/^f\d+$/.test(key)) {
+    if (key.charCodeAt(0) === 102 /* f */ && key.length > 1 && !isNaN(Number(key.slice(1)))) {
       key = key.toUpperCase(); // f1 -> F1
     }
   }
 
   // Normalize key for internal representation
   // Function keys stay uppercase, others lowercase
-  const internalKey = (key.startsWith('F') && /^F\d+$/.test(key))
+  const internalKey = (key.charCodeAt(0) === 70 /* F */ && key.length > 1 && !isNaN(Number(key.slice(1))))
     ? key
     : key.toLowerCase();
 
@@ -377,37 +376,45 @@ export function parseKey(keyString) {
  * e.g., "<leader>ww" -> [parsedLeader, parsedW, parsedW]
  */
 export function parseKeySequence(keySequenceString) {
-  // Split by angle brackets or single characters
-  const parts = [];
+  // Parse characters into result directly, avoiding intermediate array allocations
+  // like string.split('') and Array.prototype.map()
+  const result = [];
   let current = '';
   let inBracket = false;
+  const len = keySequenceString.length;
 
-  for (let i = 0; i < keySequenceString.length; i++) {
+  for (let i = 0; i < len; i++) {
     const char = keySequenceString[i];
     
     if (char === '<') {
       if (current) {
         // Add any accumulated single characters
-        parts.push(...current.split(''));
+        const currLen = current.length;
+        for (let j = 0; j < currLen; j++) {
+          result.push(parseKey(current[j]));
+        }
         current = '';
       }
       inBracket = true;
       current = '<';
     } else if (char === '>') {
       current += '>';
-      parts.push(current);
+      result.push(parseKey(current));
       current = '';
       inBracket = false;
     } else {
       current += char;
-      if (!inBracket && i === keySequenceString.length - 1) {
+      if (!inBracket && i === len - 1) {
         // Last character, add remaining
-        parts.push(...current.split(''));
+        const currLen = current.length;
+        for (let j = 0; j < currLen; j++) {
+          result.push(parseKey(current[j]));
+        }
       }
     }
   }
 
-  return parts.map(part => parseKey(part));
+  return result;
 }
 
 /**
@@ -474,7 +481,8 @@ export function eventToKey(event) {
   // Normalize the key name using pattern matching
   // We check each pattern in order until one matches, then use its normalize function
   let normalizedKey = key;
-  for (const pattern of KEY_NORMALIZATION_PATTERNS) {
+  for (let i = 0; i < KEY_NORMALIZATION_PATTERNS.length; i++) {
+    const pattern = KEY_NORMALIZATION_PATTERNS[i];
     if (pattern.test(key)) {
       normalizedKey = pattern.normalize(key);
       
@@ -490,7 +498,7 @@ export function eventToKey(event) {
 
   // For the internal key representation, use lowercase for consistency
   // except for special keys that need to match vim notation
-  const internalKey = (normalizedKey.startsWith('F') && /^F\d+$/i.test(normalizedKey)) 
+  const internalKey = (normalizedKey.charCodeAt(0) === 70 /* F */ && normalizedKey.length > 1 && !isNaN(Number(normalizedKey.slice(1))))
     ? normalizedKey 
     : normalizedKey.toLowerCase();
 
@@ -500,18 +508,6 @@ export function eventToKey(event) {
     string: keyToString({ key: normalizedKey, modifiers }),
   };
 }
-
-/**
- * Modifier to string mapping for keyToString
- * Order matters - should match vim's modifier order: C-, M-, S-, D-, T-
- */
-const MODIFIER_TO_STRING = [
-  { property: 'ctrl', prefix: 'C-' },
-  { property: 'alt', prefix: 'M-' },
-  { property: 'shift', prefix: 'S-' },
-  { property: 'super', prefix: 'D-' },
-  { property: 'meta', prefix: 'T-' },
-];
 
 /**
  * Reverse mapping for keyToString - maps internal key names to vim notation
@@ -555,12 +551,12 @@ const REVERSE_SPECIAL = {
 export function keyToString(keyObj) {
   let str = '';
   
-  // Build modifier prefix string using data-driven approach
-  for (const { property, prefix } of MODIFIER_TO_STRING) {
-    if (keyObj.modifiers[property]) {
-      str += prefix;
-    }
-  }
+  // Build modifier prefix string directly without iteration to avoid object property overhead
+  if (keyObj.modifiers.ctrl) str += 'C-';
+  if (keyObj.modifiers.alt) str += 'M-';
+  if (keyObj.modifiers.shift) str += 'S-';
+  if (keyObj.modifiers.super) str += 'D-';
+  if (keyObj.modifiers.meta) str += 'T-';
   
   str += REVERSE_SPECIAL[keyObj.key] || keyObj.key;
   return str;
