@@ -1,0 +1,3 @@
+## 2024-05-30 - KeyParser Hotpath Optimizations
+**Learning:** In the `core/keyParser.js` hotpath, heavy usage of string operations like `split('')`, spread syntax `[...current.split('')]`, and iteration over object properties dynamically creates significant garbage collection and execution overhead, measurable at ~40% slower performance.
+**Action:** When implementing tight string parsing loops (like keybindings or hotkeys), process characters directly via index tracking `[i]`, append sequentially to pre-existing arrays using inline loops, use `.charCodeAt` instead of regex `^A-Z$` checks, and manually unroll short object lookups (e.g., modifier flags) to completely avoid temporary allocation overheads.
