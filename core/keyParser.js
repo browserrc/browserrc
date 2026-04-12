@@ -555,12 +555,15 @@ const REVERSE_SPECIAL = {
 export function keyToString(keyObj) {
   let str = '';
   
-  // Build modifier prefix string using data-driven approach
-  for (const { property, prefix } of MODIFIER_TO_STRING) {
-    if (keyObj.modifiers[property]) {
-      str += prefix;
-    }
-  }
+  // Build modifier prefix string
+  // Performance: Unrolled loop avoids dynamic property access and iterator overhead
+  // Order matters here - should match vim's modifier order: C-, M-, S-, D-, T-
+  const mods = keyObj.modifiers;
+  if (mods.ctrl) str += 'C-';
+  if (mods.alt) str += 'M-';
+  if (mods.shift) str += 'S-';
+  if (mods.super) str += 'D-';
+  if (mods.meta) str += 'T-';
   
   str += REVERSE_SPECIAL[keyObj.key] || keyObj.key;
   return str;
