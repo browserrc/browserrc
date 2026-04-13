@@ -502,18 +502,6 @@ export function eventToKey(event) {
 }
 
 /**
- * Modifier to string mapping for keyToString
- * Order matters - should match vim's modifier order: C-, M-, S-, D-, T-
- */
-const MODIFIER_TO_STRING = [
-  { property: 'ctrl', prefix: 'C-' },
-  { property: 'alt', prefix: 'M-' },
-  { property: 'shift', prefix: 'S-' },
-  { property: 'super', prefix: 'D-' },
-  { property: 'meta', prefix: 'T-' },
-];
-
-/**
  * Reverse mapping for keyToString - maps internal key names to vim notation
  */
 const REVERSE_SPECIAL = {
@@ -555,12 +543,15 @@ const REVERSE_SPECIAL = {
 export function keyToString(keyObj) {
   let str = '';
   
-  // Build modifier prefix string using data-driven approach
-  for (const { property, prefix } of MODIFIER_TO_STRING) {
-    if (keyObj.modifiers[property]) {
-      str += prefix;
-    }
-  }
+  // Performance: Unroll the modifier string building loop
+  // This avoids iterator allocation and dynamic property lookups in a hot path
+  // Order matters - matches vim's modifier order: C-, M-, S-, D-, T-
+  const mods = keyObj.modifiers;
+  if (mods.ctrl) str += 'C-';
+  if (mods.alt) str += 'M-';
+  if (mods.shift) str += 'S-';
+  if (mods.super) str += 'D-';
+  if (mods.meta) str += 'T-';
   
   str += REVERSE_SPECIAL[keyObj.key] || keyObj.key;
   return str;
