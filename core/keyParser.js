@@ -377,7 +377,6 @@ export function parseKey(keyString) {
  * e.g., "<leader>ww" -> [parsedLeader, parsedW, parsedW]
  */
 export function parseKeySequence(keySequenceString) {
-  // Split by angle brackets or single characters
   const parts = [];
   let current = '';
   let inBracket = false;
@@ -387,27 +386,29 @@ export function parseKeySequence(keySequenceString) {
     
     if (char === '<') {
       if (current) {
-        // Add any accumulated single characters
-        parts.push(...current.split(''));
+        for (let j = 0; j < current.length; j++) {
+          parts.push(parseKey(current[j]));
+        }
         current = '';
       }
       inBracket = true;
       current = '<';
     } else if (char === '>') {
       current += '>';
-      parts.push(current);
+      parts.push(parseKey(current));
       current = '';
       inBracket = false;
     } else {
       current += char;
       if (!inBracket && i === keySequenceString.length - 1) {
-        // Last character, add remaining
-        parts.push(...current.split(''));
+        for (let j = 0; j < current.length; j++) {
+          parts.push(parseKey(current[j]));
+        }
       }
     }
   }
 
-  return parts.map(part => parseKey(part));
+  return parts;
 }
 
 /**
@@ -554,13 +555,14 @@ const REVERSE_SPECIAL = {
  */
 export function keyToString(keyObj) {
   let str = '';
+  const mods = keyObj.modifiers;
   
-  // Build modifier prefix string using data-driven approach
-  for (const { property, prefix } of MODIFIER_TO_STRING) {
-    if (keyObj.modifiers[property]) {
-      str += prefix;
-    }
-  }
+  // Unrolled modifier checks for performance
+  if (mods.ctrl) str += 'C-';
+  if (mods.alt) str += 'M-';
+  if (mods.shift) str += 'S-';
+  if (mods.super) str += 'D-';
+  if (mods.meta) str += 'T-';
   
   str += REVERSE_SPECIAL[keyObj.key] || keyObj.key;
   return str;

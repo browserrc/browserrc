@@ -1,0 +1,3 @@
+## 2024-05-18 - Optimized key string serialization and sequence array parsing
+**Learning:** In a codebase heavily processing key input hot-paths (`core/keyParser.js`), array allocations via `split('')`, spread syntax mapping, and loop iteration over module maps (`MODIFIER_TO_STRING`) create substantial hidden overhead.
+**Action:** Unroll fixed-length data maps directly into boolean conditional logic string-concatenation, and replace complex JS mapping syntax (split, spread) with direct primitive string index iteration and inline function calls to completely avoid allocations on high-frequency paths.
