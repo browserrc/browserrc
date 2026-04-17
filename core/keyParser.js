@@ -387,8 +387,11 @@ export function parseKeySequence(keySequenceString) {
     
     if (char === '<') {
       if (current) {
-        // Add any accumulated single characters
-        parts.push(...current.split(''));
+        // Performance: add single characters sequentially to avoid intermediate
+        // string allocation, array allocation (.split), and array spreading overhead
+        for (let j = 0; j < current.length; j++) {
+          parts.push(current[j]);
+        }
         current = '';
       }
       inBracket = true;
@@ -401,8 +404,10 @@ export function parseKeySequence(keySequenceString) {
     } else {
       current += char;
       if (!inBracket && i === keySequenceString.length - 1) {
-        // Last character, add remaining
-        parts.push(...current.split(''));
+        // Performance: add remaining single characters sequentially
+        for (let j = 0; j < current.length; j++) {
+          parts.push(current[j]);
+        }
       }
     }
   }
