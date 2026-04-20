@@ -404,7 +404,7 @@ export class KeyProcessor {
    * Stop all repeating
    */
   stopAllRepeating() {
-    for (const [, heldKey] of this.heldKeys.entries()) {
+    for (const heldKey of this.heldKeys.values()) {
       clearInterval(heldKey.intervalId);
       this.onRepeatEnd.trigger(heldKey.sequenceInfo);
     }
