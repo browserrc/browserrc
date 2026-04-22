@@ -404,7 +404,9 @@ export class KeyProcessor {
    * Stop all repeating
    */
   stopAllRepeating() {
-    for (const [, heldKey] of this.heldKeys.entries()) {
+    // Performance optimization: use .values() instead of .entries() with array destructuring
+    // to avoid intermediate array allocations and destructuring overhead
+    for (const heldKey of this.heldKeys.values()) {
       clearInterval(heldKey.intervalId);
       this.onRepeatEnd.trigger(heldKey.sequenceInfo);
     }
