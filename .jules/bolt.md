@@ -1,0 +1,3 @@
+## 2024-06-13 - Optimize Key Sequence Parsing (parseKeySequence)
+**Learning:** `parseKeySequence` was creating unnecessary intermediate arrays (e.g. `current.split('')`, spread syntax `...`, and `.map()`), causing frequent, minor allocations per key sequence parsed, which adds up on hot paths like evaluating user config keybindings or internal macro triggers.
+**Action:** When implementing string processing algorithms in key paths, avoid intermediate arrays mapping and string splits/spread operations by parsing the string directly character-by-character with indexes and pushing to the result array in a single loop. Ensure all edge case scenarios (like `a>` or `<a`) explicitly continue to pass.
