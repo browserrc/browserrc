@@ -377,37 +377,50 @@ export function parseKey(keyString) {
  * e.g., "<leader>ww" -> [parsedLeader, parsedW, parsedW]
  */
 export function parseKeySequence(keySequenceString) {
-  // Split by angle brackets or single characters
-  const parts = [];
-  let current = '';
-  let inBracket = false;
+  // Performance optimization: Avoid intermediate array allocations (e.g., .split(''),
+  // spread syntax, and .map()) by using direct index-based character iteration on the hot path.
+  const result = [];
+  const len = keySequenceString.length;
+  let i = 0;
 
-  for (let i = 0; i < keySequenceString.length; i++) {
-    const char = keySequenceString[i];
-    
-    if (char === '<') {
-      if (current) {
-        // Add any accumulated single characters
-        parts.push(...current.split(''));
-        current = '';
+  while (i < len) {
+    if (keySequenceString[i] === '<') {
+      let closeIdx = keySequenceString.indexOf('>', i + 1);
+      if (closeIdx !== -1) {
+        result.push(parseKey(keySequenceString.slice(i, closeIdx + 1)));
+        i = closeIdx + 1;
+      } else {
+        // Intentionally drop unclosed angle brackets (e.g., `<a` -> empty array)
+        break;
       }
-      inBracket = true;
-      current = '<';
-    } else if (char === '>') {
-      current += '>';
-      parts.push(current);
-      current = '';
-      inBracket = false;
     } else {
-      current += char;
-      if (!inBracket && i === keySequenceString.length - 1) {
-        // Last character, add remaining
-        parts.push(...current.split(''));
+      let start = i;
+      let hasClosing = false;
+
+      while (i < len && keySequenceString[i] !== '<') {
+        if (keySequenceString[i] === '>') {
+           i++;
+           hasClosing = true;
+           break;
+        }
+        i++;
+      }
+
+      const chunk = keySequenceString.slice(start, i);
+      if (hasClosing) {
+          // Merge non-bracketed text preceding a closing bracket into a single key structure
+          // e.g., 'a>' becomes {key: 'a>'}
+          result.push(parseKey(chunk));
+      } else {
+          // Add accumulated single characters directly without split/spread overhead
+          for (let j = 0; j < chunk.length; j++) {
+              result.push(parseKey(chunk[j]));
+          }
       }
     }
   }
 
-  return parts.map(part => parseKey(part));
+  return result;
 }
 
 /**
