@@ -1,0 +1,3 @@
+## 2025-02-27 - Intermediate Array Allocation Overhead in Hot Paths
+**Learning:** Found that string manipulation and tokenization functions (like `parseKeySequence`) often rely heavily on `String.prototype.split('')`, array spreading `[...array]`, and `.map()` calls. While idiomatic, these allocate numerous short-lived intermediate arrays per invocation, causing measurable garbage collection overhead on parsing hot paths.
+**Action:** Replace `split('')` + spread combinations with traditional loop-based indexing where characters can be processed individually or pushed sequentially to a single pre-allocated result array. Never sacrifice readability or edge case preservation (such as unclosed angle bracket drops and standalone character merging).
