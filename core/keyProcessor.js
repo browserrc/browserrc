@@ -13,6 +13,10 @@ import { Trie } from "./trie.js";
 import { eventToKey, parseKeySequence } from "./keyParser.js";
 import { Hook } from "./hooks.js";
 
+// Cache modifier keys set for O(1) lookups on the hot path
+// Prevents GC churn from allocating arrays on every key press
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
 /**
  * @typedef {Object} KeyProcessorOptions
  * @property {number} [keyTimeout=1000] - Timeout for key sequences in milliseconds
@@ -223,8 +227,7 @@ export class KeyProcessor {
   processKeyEvent(event) {
     if (!this.isActive) return false;
 
-    const modifierKeys = ["Shift", "Control", "Alt", "Meta"];
-    if (modifierKeys.includes(event.key)) return false;
+    if (MODIFIER_KEYS.has(event.key)) return false;
 
     const key = eventToKey(event);
     const shouldForward = this.processKeyInternal(key, event);
