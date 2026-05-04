@@ -1,0 +1,3 @@
+## 2024-03-21 - [Hoist Hot-Path Arrays to Sets]
+**Learning:** In highly repetitive event handlers like `processKeyEvent` and `handleKeyUp`, inline arrays combined with `.includes()` create both an O(n) lookup time and garbage collection churn on every keypress. Using module-level constants for data that doesn't change helps, and changing an Array to a Set ensures lookups are O(1) instead of O(N), creating a fast-path for returning early.
+**Action:** When working on hot-path functions (especially those tied to user input like keyboard/mouse events or tight loops), hoist constant array/object definitions to the module scope and use the optimal data structure (e.g., `Set` for membership testing) to prevent redundant allocations and speed up lookups.
