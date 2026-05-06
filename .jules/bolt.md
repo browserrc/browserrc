@@ -1,0 +1,3 @@
+## 2024-05-18 - [Hoist inline allocations in key processing hot path]
+ **Learning:** In `core/keyProcessor.js`, frequently invoked event listeners (like `processKeyEvent` and `handleKeyUp`) were re-allocating an array `["Shift", "Control", "Alt", "Meta"]` and calling `includes()` on every keystroke. This causes unnecessary garbage collection churn and O(N) lookup overhead on the critical key processing hot path.
+ **Action:** Hoist the inline array into a module-level `Set` constant (`MODIFIER_KEYS`). This prevents redundant allocations on every keypress and replaces an O(N) `includes` lookup with an O(1) `Set.has()` lookup, optimizing the hot path.
