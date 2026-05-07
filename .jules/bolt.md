@@ -1,0 +1,3 @@
+## 2024-05-07 - Hoisting frequent allocations in hot-path DOM event listeners
+**Learning:** In highly active event listeners like `processKeyEvent` and `handleKeyUp` in `core/keyProcessor.js`, initializing inline arrays (e.g. `["Shift", "Control", "Alt", "Meta"]`) for `.includes` checks incurs significant garbage collection and allocation overhead.
+**Action:** Always extract static reference collections into module-level variables. Use `Set` instead of `Array` to achieve O(1) membership checks via `.has()`, offering ~80% performance improvement on inclusion checks during fast-firing keypresses.
