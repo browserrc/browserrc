@@ -1,0 +1,3 @@
+## 2023-10-27 - [Optimizing sequence parsing and event handling]
+**Learning:** In highly trafficked hot paths like keystroke parsers, intermediate array allocations via `.split()`, spread syntax `...`, and `.map()` create significant GC churn and overhead, even in JS engines that optimize map. Similarly, inline instantiation of Arrays for `.includes()` checks on every keystroke in event handlers is noticeably slower than a hoisted module-level `Set.has()`.
+**Action:** When working on input event handlers, extract common array checks into module-level Sets to gain O(1) lookups and eliminate redundant allocation. Refactor hot path parsing logic to avoid intermediate strings and arrays by utilizing standard loops.
