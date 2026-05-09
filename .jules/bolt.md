@@ -1,0 +1,3 @@
+## 2024-05-09 - [Hoist Inline Arrays to Sets in Event Listeners]
+**Learning:** Found a pattern in `core/keyProcessor.js` where arrays of modifier keys (`["Shift", "Control", "Alt", "Meta"]`) were being repeatedly allocated and scanned using `.includes()` inside highly frequent event listeners (`processKeyEvent` and `handleKeyUp`). This causes O(n) lookups and constant garbage collection churn on the hottest path in the application.
+**Action:** Always hoist static arrays used for lookups in event listeners to module-level `Set` constants to ensure O(1) lookups and eliminate unnecessary memory allocations.
