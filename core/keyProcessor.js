@@ -14,6 +14,12 @@ import { eventToKey, parseKeySequence } from "./keyParser.js";
 import { Hook } from "./hooks.js";
 
 /**
+ * Performance optimization: Use a module-level Set for modifier keys
+ * to avoid array allocation and provide O(1) lookup on the keypress hot path
+ */
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
+/**
  * @typedef {Object} KeyProcessorOptions
  * @property {number} [keyTimeout=1000] - Timeout for key sequences in milliseconds
  * @property {number} [ambiguityTimeout=300] - Timeout for ambiguous key resolution
@@ -223,8 +229,7 @@ export class KeyProcessor {
   processKeyEvent(event) {
     if (!this.isActive) return false;
 
-    const modifierKeys = ["Shift", "Control", "Alt", "Meta"];
-    if (modifierKeys.includes(event.key)) return false;
+    if (MODIFIER_KEYS.has(event.key)) return false;
 
     const key = eventToKey(event);
     const shouldForward = this.processKeyInternal(key, event);
@@ -416,8 +421,7 @@ export class KeyProcessor {
    */
   handleKeyUp(event) {
     if (!this.isActive) return;
-    const modifierKeys = ['Shift', 'Control', 'Alt', 'Meta'];
-    if (modifierKeys.includes(event.key)) return;
+    if (MODIFIER_KEYS.has(event.key)) return;
     const key = eventToKey(event);
     this.stopRepeating(key.string);
   }
