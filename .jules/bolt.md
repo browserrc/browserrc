@@ -1,0 +1,3 @@
+## 2025-02-24 - [Avoid inline array allocation on hot paths]
+**Learning:** Found that inline array initializations (e.g., `const modifierKeys = ["Shift", "Control", "Alt", "Meta"];`) within frequently called methods (`processKeyEvent` and `handleKeyUp`) add significant garbage collection overhead and use O(N) `.includes()` lookup which slows down hot paths significantly.
+**Action:** Always lift static arrays used for lookups in frequently called methods to module-level constants. Use `Set` instead of `Array` to get O(1) `.has()` lookups for elements.
