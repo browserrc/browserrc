@@ -296,12 +296,14 @@ export class KeyProcessor {
       this.matchedPath.push(previousNode);
 
       // Trie node hooks
-      previousNode.hooks?.onChildMatched?.trigger();
+      // Performance: We use the private _hooks property to bypass the lazy getter.
+      // This prevents allocating 6 Hook objects per node during standard keypress traversal.
+      previousNode._hooks?.onChildMatched?.trigger();
 
       // Global node matched hook
       const ctx = this.buildContextWithState();
       this.onNodeMatched.trigger(ctx, this.currentNode);
-      this.currentNode.hooks?.onMatched?.trigger(ctx, this.currentNode);
+      this.currentNode._hooks?.onMatched?.trigger(ctx, this.currentNode);
 
       if (this.currentNode.isAmbiguous()) {
         this.pendingAmbiguousSequence = this.getMatchedSequence();
@@ -347,12 +349,13 @@ export class KeyProcessor {
       }
 
       // Failure hooks
-      this.currentNode.hooks?.onNotMatched?.trigger();
+      // Performance: Bypassing lazy getter via _hooks to avoid allocations on failure path.
+      this.currentNode._hooks?.onNotMatched?.trigger();
       if (hadChildren) {
-        this.currentNode.hooks?.onNoChildMatched?.trigger();
+        this.currentNode._hooks?.onNoChildMatched?.trigger();
       }
       this.matchedPath.forEach((node) => {
-        node.hooks?.onBranchFailed?.trigger();
+        node._hooks?.onBranchFailed?.trigger();
       });
 
       const shouldForward = this.currentNode.forwardOnNonMatch ?? true;
@@ -366,10 +369,10 @@ export class KeyProcessor {
    */
   callCompletionHooks() {
     this.matchedPath.forEach((node) => {
-      node.hooks?.onSequenceComplete?.trigger();
+      node._hooks?.onSequenceComplete?.trigger();
     });
     const root = this.currentRoot.root;
-    root?.hooks?.onSequenceComplete?.trigger();
+    root?._hooks?.onSequenceComplete?.trigger();
   }
 
 
