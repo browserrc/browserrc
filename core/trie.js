@@ -30,8 +30,23 @@ export class TrieNode {
   forwardOnNonMatch;
   /** @type {Object} */
   metadata;
+  /** @type {TrieNodeHooks | undefined} */
+  _hooks;
+
   /** @type {TrieNodeHooks} */
-  hooks;
+  get hooks() {
+    if (!this._hooks) {
+      this._hooks = {
+        onMatched: new Hook(`onMatched[${this.key}]`, 'Called when this node is matched'),
+        onNotMatched: new Hook(`onNotMatched[${this.key}]`, 'Called when this node fails to match'),
+        onChildMatched: new Hook(`onChildMatched[${this.key}]`, 'Called when a child of this node matches'),
+        onSequenceComplete: new Hook(`onSequenceComplete[${this.key}]`, 'Called when sequence completes at this node'),
+        onNoChildMatched: new Hook(`onNoChildMatched[${this.key}]`, 'Called when no child matches'),
+        onBranchFailed: new Hook(`onBranchFailed[${this.key}]`, 'Called when child branch fails'),
+      };
+    }
+    return this._hooks;
+  }
 
   /**
    * @param {string|null} [key=null] - The key this node represents
@@ -43,15 +58,6 @@ export class TrieNode {
     this.isCompletable = options.isCompletable ?? false;
     this.forwardOnNonMatch = options.forwardOnNonMatch ?? false;
     this.metadata = options.metadata ?? {};
-
-    this.hooks = {
-      onMatched: new Hook(`onMatched[${key}]`, 'Called when this node is matched'),
-      onNotMatched: new Hook(`onNotMatched[${key}]`, 'Called when this node fails to match'),
-      onChildMatched: new Hook(`onChildMatched[${key}]`, 'Called when a child of this node matches'),
-      onSequenceComplete: new Hook(`onSequenceComplete[${key}]`, 'Called when sequence completes at this node'),
-      onNoChildMatched: new Hook(`onNoChildMatched[${key}]`, 'Called when no child matches'),
-      onBranchFailed: new Hook(`onBranchFailed[${key}]`, 'Called when child branch fails'),
-    };
   }
 
   /**
