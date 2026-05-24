@@ -1,0 +1,3 @@
+## 2024-05-24 - Lazy Hook Initialization in TrieNode
+**Learning:** Trie nodes are instantiated frequently (e.g., when building key sequences). Eagerly creating 6 Hook instances per TrieNode adds significant overhead in memory allocation and time. The `core/trie.js` currently instantiates them all in the constructor. Accessing these via `hooks?.` triggers getter which creates them anyway if they don't exist. Thus, we should use lazy initialization with `_hooks` to avoid this on the hot path, and update `core/keyProcessor.js` to check `_hooks?.` before triggering them.
+**Action:** Always verify object creation on hot paths. For frequent classes like TrieNode, use lazy initialization and safe private accessors (e.g. `._hooks?.`) for checking if they need to be run.
