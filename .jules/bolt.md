@@ -1,0 +1,3 @@
+## 2024-05-24 - O(N) Array Lookup Overhead on Keypress Hot Path
+**Learning:** In highly trafficked event handlers like `processKeyEvent` and `handleKeyUp`, creating inline arrays (e.g., `['Shift', 'Control', 'Alt', 'Meta']`) and checking them using `.includes(event.key)` adds O(N) lookup time and causes unnecessary garbage collection churn for every single keypress.
+**Action:** Replace inline arrays with module-level `Set` constants in hot paths to ensure O(1) lookups and eliminate memory allocation/garbage collection overhead on every keystroke.
